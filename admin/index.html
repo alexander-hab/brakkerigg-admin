@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="no">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin</title>
+
+    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+
+    <style>
+      body { font-family: Arial, sans-serif; padding: 24px; max-width: 1200px; }
+      button { padding: 10px 14px; cursor: pointer; }
+      input, select { padding: 8px; width: 100%; box-sizing: border-box; }
+      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .bar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; }
+      .msg { margin: 12px 0; color: #333; }
+      table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+      th, td { text-align: left; border-top: 1px solid #ddd; padding: 8px; vertical-align: top; }
+      th { border-top: none; }
+      .card { border: 1px solid #ddd; padding: 16px; border-radius: 8px; margin-top: 18px; }
+      .muted { color: #555; }
+    </style>
+  </head>
+  <body>
+    <div class="bar">
+      <h2 style="margin:0">Brakkerigg admin</h2>
+      <button id="refreshBtn">Oppdater</button>
+      <button id="logoutBtn">Logg ut</button>
+      <span class="muted" id="who"></span>
+    </div>
+
+    <div class="msg" id="msg"></div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Oversikt</h3>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Enhet</th>
+              <th>Status</th>
+              <th>Leietaker nå</th>
+              <th>Firma</th>
+              <th>Innflytting</th>
+              <th>Utflytting</th>
+              <th>Dager igjen</th>
+              <th>Lengde nå</th>
+              <th>Sum dager utleid ferdig</th>
+              <th>Neste booking</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Ny booking</h3>
+      <p class="muted">Minimum 7 netter. Utflytting er datoen de forlater enheten.</p>
+
+      <form id="form">
+        <div class="row">
+          <div>
+            <label>Enhet</label>
+            <select id="unitId">
+              <option value="">Velg</option>
+            </select>
+          </div>
+          <div>
+            <label>Firma</label>
+            <input id="company" />
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:12px">
+          <div>
+            <label>Leietaker</label>
+            <input id="tenantName" />
+          </div>
+          <div></div>
+        </div>
+
+        <div class="row" style="margin-top:12px">
+          <div>
+            <label>Innflytting</label>
+            <input id="checkinDate" type="date" />
+          </div>
+          <div>
+            <label>Utflytting</label>
+            <input id="checkoutDate" type="date" />
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <button type="submit">Opprett booking</button>
+        </div>
+      </form>
+    </div>
+
+    <script>
+      const elMsg = document.getElementById("msg")
+      const elTbody = document.getElementById("tbody")
+      const elUnitSelect = document.getElementById("unitId")
+
+      function setMsg(t) {
+        elMsg.textContent = t || ""
+      }
+
+      function isoToday() {
+        const d = new Date()
+        const mm = String(d.getMonth() + 1).padStart(2, "0")
+        const dd = String(d.getDate()).padStart(2, "0")
+        return d.getFullYear() + "-" + mm + "-" + dd
+      }
+
+      function daysBetween(a, b) {
+        if (!a || !b) return ""
+        const da = new Date(a)
+        const db = new Date(b)
+        const diff = Math.round((db - da) / (1000 * 60 * 60 * 24))
+        return Number.isFinite(diff) ? diff : ""
+      }
+
+      function daysLeft(checkout) {
+        if (!checkout) return ""
+        return daysBetween(isoToday(), checkout)
+      }
+
+      function statusText(row) {
+        if (row.current_booking_id) return "Utleid"
+        if (row.next_checkin_date) return "Ledig, booket"
+        return "Ledig"
+      }
+
+      function nextText(row) {
+        if (!row.next_checkin_date) return ""
+        return row.next_checkin_date + " til " + row.next_checkout_date
+      }
+
+      function clearTable() {
+        elTbody.innerHTML = ""
+      }
+
+      function addRow(row) {
+        const tr = document.createElement("tr")
+
+        const lengthNow = row.current_checkin_date && row.current_checkout_date
+          ? daysBetween(row.current_checkin_date, row.current_checkout_date)
+          : ""
+
+        const cells = [
+          row.unit_code,
+          statusText(row),
+          row.current_tenant_name || "",
+          row.current_company || "",
+          row.current_checkin_date || "",
+          row.current_checkout_date || "",
+          row.current_checkout_date ? daysLeft(row.current_checkout_date) : "",
+          lengthNow,
+          row.total_days_completed || 0,
+          nextText(row)
+        ]
+
+        for (const c of cells) {
+          const td = document.createElement("td")
+          td.textContent = c
+          tr.appendChild(td)
+        }
+
+        elTbody.appendChild(tr)
+      }
+
+      function fillUnitSelect(rows) {
+        elUnitSelect.innerHTML = '<option value="">Velg</option>'
+        for (const r of rows) {
+          const opt = document.createElement("option")
+          opt.value = r.unit_id
+          opt.textContent = r.unit_code
+          elUnitSelect.appendChild(opt)
+        }
+      }
+
+      async function loadUnits() {
+        setMsg("Henter data")
+        clearTable()
+        try {
+          const res = await fetch("/api/units")
+          if (res.status === 401 || res.status === 403) {
+            window.location.href = "/login/"
+            return
+          }
+          const rows = await res.json()
+          setMsg("")
+          fillUnitSelect(rows)
+          for (const r of rows) addRow(r)
+        } catch (e) {
+          setMsg("Klarte ikke å hente data")
+        }
+      }
+
+      async function createBooking(e) {
+        e.preventDefault()
+        setMsg("")
+
+        const unitId = document.getElementById("unitId").value
+        const tenantName = document.getElementById("tenantName").value
+        const company = document.getElementById("company").value
+        const checkinDate = document.getElementById("checkinDate").value
+        const checkoutDate = document.getElementById("checkoutDate").value
+
+        if (!unitId || !checkinDate || !checkoutDate) {
+          setMsg("Fyll inn enhet og datoer")
+          return
+        }
+
+        const len = daysBetween(checkinDate, checkoutDate)
+        if (len < 7) {
+          setMsg("Minimum leieperiode er 7 netter")
+          return
+        }
+
+        try {
+          const res = await fetch("/api/create-booking", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              unit_id: Number(unitId),
+              tenant_name: tenantName,
+              company: company,
+              checkin_date: checkinDate,
+              checkout_date: checkoutDate
+            })
+          })
+
+          if (res.status === 409) {
+            setMsg("Konflikt. Enheten er allerede booket i perioden")
+            return
+          }
+
+          if (!res.ok) {
+            const t = await res.text()
+            setMsg(t || "Feil ved oppretting")
+            return
+          }
+
+          setMsg("Booking opprettet")
+          document.getElementById("tenantName").value = ""
+          document.getElementById("company").value = ""
+          document.getElementById("checkinDate").value = ""
+          document.getElementById("checkoutDate").value = ""
+          await loadUnits()
+        } catch (e) {
+          setMsg("Feil ved oppretting")
+        }
+      }
+
+      function logout() {
+        if (!window.netlifyIdentity) return
+        window.netlifyIdentity.logout()
+        window.location.href = "/login/"
+      }
+
+      function initIdentity() {
+        if (!window.netlifyIdentity) return
+
+        window.netlifyIdentity.on("init", (user) => {
+          if (!user) window.location.href = "/login/"
+          else document.getElementById("who").textContent = user.email || ""
+        })
+
+        window.netlifyIdentity.on("logout", () => {
+          window.location.href = "/login/"
+        })
+
+        window.netlifyIdentity.init()
+      }
+
+      document.getElementById("refreshBtn").addEventListener("click", loadUnits)
+      document.getElementById("logoutBtn").addEventListener("click", logout)
+      document.getElementById("form").addEventListener("submit", createBooking)
+
+      initIdentity()
+      loadUnits()
+    </script>
+  </body>
+</html>

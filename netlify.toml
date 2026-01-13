@@ -1,0 +1,59 @@
+[build]
+  publish = "."
+  command = "npm install"
+
+[functions]
+  directory = "netlify/functions"
+
+[[redirects]]
+  from = "/api/units"
+  to = "/.netlify/functions/units"
+  status = 200
+  force = true
+  conditions = { Role = ["admin"] }
+
+[[redirects]]
+  from = "/api/units"
+  to = "/login/"
+  status = 302
+
+[[redirects]]
+  from = "/api/create-booking"
+  to = "/.netlify/functions/create-booking"
+  status = 200
+  force = true
+  conditions = { Role = ["admin"] }
+
+[[redirects]]
+  from = "/api/create-booking"
+  to = "/login/"
+  status = 302
+
+[[redirects]]
+  from = "/admin"
+  to = "/admin/"
+  status = 301
+
+[[redirects]]
+  from = "/admin/"
+  to = "/admin/index.html"
+  status = 200
+  force = true
+  conditions = { Role = ["admin"] }
+
+[[redirects]]
+  from = "/admin/"
+  to = "/login/"
+  status = 302
+
+[[redirects]]
+  from = "/admin/index.html"
+  to = "/admin/index.html"
+  status = 200
+  force = true
+  conditions = { Role = ["admin"] }
+
+[[redirects]]
+  from = "/admin/index.html"
+  to = "/login/"
+  status = 302

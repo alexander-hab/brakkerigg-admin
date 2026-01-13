@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="no">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login</title>
+
+    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+
+    <style>
+      body { font-family: Arial, sans-serif; padding: 24px; max-width: 720px; }
+      button { padding: 10px 14px; cursor: pointer; }
+      .box { border: 1px solid #ddd; padding: 16px; border-radius: 8px; }
+      .muted { color: #555; }
+    </style>
+  </head>
+  <body>
+    <h2>Innlogging</h2>
+
+    <div class="box">
+      <p class="muted" id="status">Sjekker innlogging</p>
+      <button id="loginBtn">Logg inn</button>
+    </div>
+
+    <script>
+      function show(msg) {
+        document.getElementById("status").textContent = msg
+      }
+
+      if (!window.netlifyIdentity) {
+        show("Fant ikke innloggingsmodulen")
+      } else {
+        window.netlifyIdentity.on("init", (user) => {
+          if (user) window.location.href = "/admin/"
+          else show("Ikke innlogget")
+        })
+
+        window.netlifyIdentity.on("login", () => {
+          window.location.href = "/admin/"
+        })
+
+        window.netlifyIdentity.on("logout", () => {
+          show("Logget ut")
+        })
+
+        window.netlifyIdentity.init()
+
+        document.getElementById("loginBtn").addEventListener("click", () => {
+          window.netlifyIdentity.open("login")
+        })
+      }
+    </script>
+  </body>
+</html>
