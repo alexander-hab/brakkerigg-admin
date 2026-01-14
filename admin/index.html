@@ -101,6 +101,7 @@
       const elMsg = document.getElementById("msg")
       const elTbody = document.getElementById("tbody")
       const elUnitSelect = document.getElementById("unitId")
+      const elWho = document.getElementById("who")
 
       function setMsg(t) {
         elMsg.textContent = t || ""
@@ -180,15 +181,38 @@
         }
       }
 
+      let identityReadyResolve
+      const identityReady = new Promise((res) => { identityReadyResolve = res })
+
+      async function authHeaders(extra = {}) {
+        const ni = window.netlifyIdentity
+        const user = ni && ni.currentUser ? ni.currentUser() : null
+        if (!user || !user.jwt) return extra
+        const token = await user.jwt()
+        if (!token) return extra
+        return { ...extra, Authorization: "Bearer " + token }
+      }
+
       async function loadUnits() {
         setMsg("Henter data")
         clearTable()
+
         try {
-          const res = await fetch("/api/units")
+          await identityReady
+          const headers = await authHeaders()
+          const res = await fetch("/api/units", { headers })
+
           if (res.status === 401 || res.status === 403) {
             window.location.href = "/login/"
             return
           }
+
+          if (!res.ok) {
+            const t = await res.text()
+            setMsg(t || ("Klarte ikke å hente data. Status " + res.status))
+            return
+          }
+
           const rows = await res.json()
           setMsg("")
           fillUnitSelect(rows)
@@ -220,9 +244,12 @@
         }
 
         try {
+          await identityReady
+          const headers = await authHeaders({ "Content-Type": "application/json" })
+
           const res = await fetch("/api/create-booking", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers,
             body: JSON.stringify({
               unit_id: Number(unitId),
               tenant_name: tenantName,
@@ -231,6 +258,11 @@
               checkout_date: checkoutDate
             })
           })
+
+          if (res.status === 401 || res.status === 403) {
+            window.location.href = "/login/"
+            return
+          }
 
           if (res.status === 409) {
             setMsg("Konflikt. Enheten er allerede booket i perioden")
@@ -261,18 +293,23 @@
       }
 
       function initIdentity() {
-        if (!window.netlifyIdentity) return
+        const ni = window.netlifyIdentity
+        if (!ni) return
 
-        window.netlifyIdentity.on("init", (user) => {
-          if (!user) window.location.href = "/login/"
-          else document.getElementById("who").textContent = user.email || ""
+        ni.on("init", (user) => {
+          if (!user) {
+            window.location.href = "/login/"
+            return
+          }
+          elWho.textContent = user.email || ""
+          identityReadyResolve(user)
         })
 
-        window.netlifyIdentity.on("logout", () => {
+        ni.on("logout", () => {
           window.location.href = "/login/"
         })
 
-        window.netlifyIdentity.init()
+        ni.init()
       }
 
       document.getElementById("refreshBtn").addEventListener("click", loadUnits)
@@ -280,7 +317,7 @@
       document.getElementById("form").addEventListener("submit", createBooking)
 
       initIdentity()
-      loadUnits()
+      identityReady.then(() => loadUnits())
     </script>
   </body>
 </html>
