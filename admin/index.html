@@ -35,6 +35,7 @@
       }
 
       .unitGreen { background: #22c55e; }
+      .unitYellow { background: #eab308; }
       .unitRed { background: #ef4444; }
 
       .pickGrid { display: grid; grid-template-columns: 160px 1fr; gap: 10px; align-items: center; margin-top: 12px; }
@@ -235,8 +236,17 @@
         }
       }
 
-      function unitIsBooked(row) {
-        return Boolean(row.current_booking_id || row.next_checkin_date)
+      function unitColorClass(row) {
+        const today = isoToday()
+
+        if (row.current_booking_id) return "unitRed"
+
+        if (row.next_checkin_date) {
+          if (String(today) < String(row.next_checkin_date)) return "unitYellow"
+          return "unitRed"
+        }
+
+        return "unitGreen"
       }
 
       const UNIT_POS = {
@@ -283,9 +293,7 @@
         "219": { x: 83.73, y: 9.88 },
         "220": { x: 83.27, y: 24.37 },
         "221": { x: 89.27, y: 9.74 },
-        "222": { x: 89.36, y: 24.50 },
-         Eksempel:
-        // "101": { x: 12.34, y: 56.78 },
+        "222": { x: 89.36, y: 24.50 }
       }
 
       function ensureMapDots(rows) {
@@ -297,7 +305,7 @@
           if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") continue
 
           const dot = document.createElement("div")
-          dot.className = "unitDot " + (unitIsBooked(r) ? "unitRed" : "unitGreen")
+          dot.className = "unitDot " + unitColorClass(r)
           dot.style.left = pos.x + "%"
           dot.style.top = pos.y + "%"
           dot.title = "Enhet " + code
@@ -493,4 +501,3 @@
     </script>
   </body>
 </html>
-
