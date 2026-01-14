@@ -35,6 +35,8 @@
       .unitGreen { background: rgba(34,197,94,0.33); }
       .unitRed { background: rgba(239,68,68,0.33); }
       .unitYellow { background: rgba(234,179,8,0.33); }
+
+      .btnSmall { padding: 6px 10px; }
     </style>
   </head>
 
@@ -72,6 +74,7 @@
               <th>Lengde nå</th>
               <th>Sum dager utleid ferdig</th>
               <th>Neste booking</th>
+              <th>Handling</th>
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
@@ -194,6 +197,28 @@
           tr.appendChild(td)
         }
 
+        const tdActions = document.createElement("td")
+
+        if (row.current_booking_id) {
+          const btn = document.createElement("button")
+          btn.type = "button"
+          btn.className = "btnSmall"
+          btn.textContent = "Slett aktiv"
+          btn.addEventListener("click", () => deleteBooking(Number(row.current_booking_id)))
+          tdActions.appendChild(btn)
+        }
+
+        if (row.next_booking_id) {
+          const btn2 = document.createElement("button")
+          btn2.type = "button"
+          btn2.className = "btnSmall"
+          btn2.style.marginLeft = "8px"
+          btn2.textContent = "Slett neste"
+          btn2.addEventListener("click", () => deleteBooking(Number(row.next_booking_id)))
+          tdActions.appendChild(btn2)
+        }
+
+        tr.appendChild(tdActions)
         elTbody.appendChild(tr)
       }
 
@@ -497,6 +522,44 @@
         }
       }
 
+      async function deleteBooking(bookingId) {
+        if (!Number.isFinite(bookingId) || bookingId <= 0) {
+          setMsg("Mangler booking id")
+          return
+        }
+
+        const ok = confirm("Vil du slette denne bookingen?")
+        if (!ok) return
+
+        try {
+          await identityReady
+          const headers = await authHeaders({ "Content-Type": "application/json" })
+
+          const res = await fetch("/.netlify/functions/delete-booking", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ booking_id: bookingId })
+          })
+
+          if (res.status === 401 || res.status === 403) {
+            const t = await res.text()
+            setMsg(t || "Ingen tilgang")
+            return
+          }
+
+          if (!res.ok) {
+            const t = await res.text()
+            setMsg(t || ("Feil ved sletting. Status " + res.status))
+            return
+          }
+
+          setMsg("Booking slettet")
+          await loadUnits()
+        } catch (e) {
+          setMsg("Feil ved sletting")
+        }
+      }
+
       function logout() {
         const ni = window.netlifyIdentity
         if (!ni) return
@@ -531,7 +594,5 @@
       initIdentity()
       identityReady.then(() => loadUnits())
     </script>
-
-    
   </body>
 </html>
