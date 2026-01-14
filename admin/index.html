@@ -146,6 +146,16 @@
         return d.getFullYear() + "-" + mm + "-" + dd
       }
 
+      function formatDateNo(iso) {
+        if (!iso || typeof iso !== "string") return ""
+        const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
+        if (!m) return iso
+        const yyyy = m[1]
+        const mm = m[2]
+        const dd = m[3]
+        return dd + "." + mm + "." + yyyy
+      }
+
       function daysBetween(a, b) {
         if (!a || !b) return ""
         const da = new Date(a)
@@ -157,24 +167,6 @@
       function daysLeft(checkout) {
         if (!checkout) return ""
         return daysBetween(isoToday(), checkout)
-      }
-
-      function statusText(row) {
-        if (row.current_booking_id) return "Utleid"
-        const up = getUpcoming(row)
-        if (row.next_checkin_date || up.length > 0) return "Ledig, booket"
-        return "Ledig"
-      }
-
-      function nextText(row) {
-        if (row.next_checkin_date) return row.next_checkin_date + " til " + row.next_checkout_date
-        const up = getUpcoming(row)
-        if (up.length === 0) return ""
-        return (up[0].checkin_date || "") + " til " + (up[0].checkout_date || "")
-      }
-
-      function clearTable() {
-        elTbody.innerHTML = ""
       }
 
       function safeJsonParseArray(x) {
@@ -192,6 +184,26 @@
         const up = safeJsonParseArray(row.upcoming_bookings)
         up.sort((a, b) => String(a.checkin_date || "").localeCompare(String(b.checkin_date || "")))
         return up
+      }
+
+      function statusText(row) {
+        if (row.current_booking_id) return "Utleid"
+        const up = getUpcoming(row)
+        if (row.next_checkin_date || up.length > 0) return "Ledig, booket"
+        return "Ledig"
+      }
+
+      function nextText(row) {
+        if (row.next_checkin_date) {
+          return formatDateNo(row.next_checkin_date) + " til " + formatDateNo(row.next_checkout_date)
+        }
+        const up = getUpcoming(row)
+        if (up.length === 0) return ""
+        return formatDateNo(up[0].checkin_date || "") + " til " + formatDateNo(up[0].checkout_date || "")
+      }
+
+      function clearTable() {
+        elTbody.innerHTML = ""
       }
 
       function upcomingCell(row) {
@@ -212,7 +224,11 @@
           const txt = document.createElement("div")
           txt.className = "upText"
           const who = (b.company || b.tenant_name) ? (" " + (b.company || b.tenant_name)) : ""
-          txt.textContent = (b.checkin_date || "") + " til " + (b.checkout_date || "") + who
+          txt.textContent =
+            formatDateNo(b.checkin_date || "") +
+            " til " +
+            formatDateNo(b.checkout_date || "") +
+            who
 
           const del = document.createElement("button")
           del.type = "button"
@@ -241,8 +257,8 @@
           statusText(row),
           row.current_tenant_name || "",
           row.current_company || "",
-          row.current_checkin_date || "",
-          row.current_checkout_date || "",
+          formatDateNo(row.current_checkin_date),
+          formatDateNo(row.current_checkout_date),
           row.current_checkout_date ? daysLeft(row.current_checkout_date) : "",
           lengthNow,
           row.total_days_completed || 0,
@@ -455,8 +471,8 @@
             lines.push(statusText(r))
             if (r.current_company) lines.push("Firma: " + r.current_company)
             if (r.current_tenant_name) lines.push("Leietaker: " + r.current_tenant_name)
-            if (r.current_checkin_date) lines.push("Inn: " + r.current_checkin_date)
-            if (r.current_checkout_date) lines.push("Ut: " + r.current_checkout_date)
+            if (r.current_checkin_date) lines.push("Inn: " + formatDateNo(r.current_checkin_date))
+            if (r.current_checkout_date) lines.push("Ut: " + formatDateNo(r.current_checkout_date))
 
             const up = getUpcoming(r)
             if (!r.current_booking_id && up.length > 0) {
@@ -464,7 +480,7 @@
               for (let i = 0; i < Math.min(5, up.length); i++) {
                 const b = up[i]
                 const who = (b.company || b.tenant_name) ? (" " + (b.company || b.tenant_name)) : ""
-                lines.push((b.checkin_date || "") + " til " + (b.checkout_date || "") + who)
+                lines.push(formatDateNo(b.checkin_date || "") + " til " + formatDateNo(b.checkout_date || "") + who)
               }
             }
 
