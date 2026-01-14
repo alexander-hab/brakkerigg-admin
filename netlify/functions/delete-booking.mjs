@@ -1,72 +1,72 @@
-const { Pool } = require("pg")
+import { neon } from "@netlify/neon"
 
-let pool
-
-function getPool() {
-  if (!pool) {
-    pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false }
-    })
-  }
-  return pool
+function isAdminFromContext(context) {
+  const user = context?.clientContext?.user
+  const roles = user?.app_metadata?.roles
+  if (!user || !Array.isArray(roles)) return false
+  const lower = roles.map((r) => String(r).toLowerCase())
+  return lower.includes("admin")
 }
 
-function json(statusCode, data) {
-  return {
-    statusCode,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  }
-}
-
-function text(statusCode, message) {
+function text(statusCode, msg) {
   return {
     statusCode,
     headers: { "Content-Type": "text/plain; charset=utf-8" },
-    body: message || ""
+    body: msg || ""
   }
 }
 
-function hasAdminRole(user) {
-  const roles = user && user.app_metadata && Array.isArray(user.app_metadata.roles)
-    ? user.app_metadata.roles
-    : []
-  return roles.includes("admin") || roles.includes("Admin")
+function json(statusCode, obj) {
+  return {
+    statusCode,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(obj)
+  }
 }
 
-exports.handler = async (event, context) => {
+export const handler = async (event, context) => {
   try {
-    if (event.httpMethod !== "POST") return text(405, "Method Not Allowed")
+    if (event.httpMethod !== "POST") return text(405, "Method not allowed")
 
-    const user = context && context.clientContext && context.clientContext.user
-      ? context.clientContext.user
-      : null
+    if (!isAdminFromContext(context)) {
+      return text(403, "Forbidden")
+    }
 
-    if (!user) return text(401, "Not logged in")
-    if (!hasAdminRole(user)) return text(403, "Forbidden")
-
-    let body
+    let body = {}
     try {
-      body = JSON.parse(event.body || "{}")
-    } catch (e) {
-      return text(400, "Invalid JSON")
+      body = event.body ? JSON.parse(event.body) : {}
+    } catch {
+      return text(400, "Ugyldig JSON")
     }
 
     const bookingId = Number(body.booking_id)
-    if (!Number.isFinite(bookingId) || bookingId <= 0) return text(400, "Missing booking_id")
+    if (!Number.isFinite(bookingId) || bookingId <= 0) {
+      return text(400, "Mangler booking_id")
+    }
 
-    const db = getPool()
+    const sql = neon(process.env.DATABASE_URL)
 
-    const res = await db.query(
-      "DELETE FROM bookings WHERE id = $1 RETURNING id",
-      [bookingId]
-    )
+    const cancelled = await sql`
+      update bookings
+      set status = 'cancelled'
+      where id = ${bookingId}
+        and status <> 'cancelled'
+      returning id, unit_id;
+    `
 
-    if (res.rowCount === 0) return text(404, "Booking not found")
+    if (cancelled.length === 0) {
+      const exists = await sql`
+        select id, status
+        from bookings
+        where id = ${bookingId}
+        limit 1;
+      `
+      if (exists.length === 0) return text(404, "Booking finnes ikke")
+      return json(200, { ok: true, already_cancelled: true, id: exists[0].id })
+    }
 
-    return json(200, { ok: true, deleted_id: res.rows[0].id })
-  } catch (e) {
-    return text(500, "Server error")
+    return json(200, { ok: true, cancelled: true, id: cancelled[0].id, unit_id: cancelled[0].unit_id })
+  } catch (err) {
+    return text(500, String(err?.message || err))
   }
 }
