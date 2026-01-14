@@ -200,7 +200,7 @@
         try {
           await identityReady
           const headers = await authHeaders()
-          const res = await fetch("/api/units", { headers })
+          const res = await fetch("/.netlify/functions/units", { headers })
 
           if (res.status === 401 || res.status === 403) {
             window.location.href = "/login/"
@@ -247,7 +247,7 @@
           await identityReady
           const headers = await authHeaders({ "Content-Type": "application/json" })
 
-          const res = await fetch("/api/create-booking", {
+          const res = await fetch("/.netlify/functions/create-booking", {
             method: "POST",
             headers,
             body: JSON.stringify({
@@ -287,8 +287,9 @@
       }
 
       function logout() {
-        if (!window.netlifyIdentity) return
-        window.netlifyIdentity.logout()
+        const ni = window.netlifyIdentity
+        if (!ni) return
+        ni.logout()
         window.location.href = "/login/"
       }
 
