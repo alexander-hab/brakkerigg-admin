@@ -10,7 +10,7 @@
     <style>
       body { font-family: Arial, sans-serif; padding: 24px; max-width: 1200px; }
       button { padding: 10px 14px; cursor: pointer; }
-      input, select, textarea { padding: 8px; width: 100%; box-sizing: border-box; }
+      input, select { padding: 8px; width: 100%; box-sizing: border-box; }
       .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
       .bar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; }
       .msg { margin: 12px 0; color: #333; }
@@ -27,13 +27,14 @@
       .unitBox {
         position: absolute;
         box-sizing: border-box;
-        border: 1px solid rgba(0,0,0,0.22);
         border-radius: 2px;
         cursor: pointer;
+        pointer-events: auto;
       }
-      .unitGreen { background: rgba(34,197,94,0.35); }
-      .unitRed { background: rgba(239,68,68,0.35); }
-      .unitYellow { background: rgba(234,179,8,0.35); }
+
+      .unitGreen { background: rgba(34,197,94,0.33); }
+      .unitRed { background: rgba(239,68,68,0.33); }
+      .unitYellow { background: rgba(234,179,8,0.33); }
     </style>
   </head>
 
@@ -49,7 +50,6 @@
 
     <div class="card">
       <h3 style="margin-top:0">Kart</h3>
-
       <div class="mapWrap" id="mapWrap">
         <img class="mapImg" src="/admin/kart.png" alt="Kart over enheter" />
         <div class="mapLayer" id="mapLayer"></div>
@@ -220,73 +220,155 @@
         return "unitGreen"
       }
 
-      function buildGridRects() {
-        const rects = {}
+      const ROW_1ETG_TOP = [101,103,105,107,109,111,113,115,117,119,121]
+      const ROW_1ETG_BOT = [102,104,106,108,110,112,114,116,118,120,122]
+      const ROW_2ETG_TOP = [201,203,205,207,209,211,213,215,217,219,221]
+      const ROW_2ETG_BOT = [202,204,206,208,210,212,214,216,218,220,222]
 
-        function addGrid(opts) {
-          const cols = opts.cols
-          const pitch = (opts.xEnd - opts.xStart) / (cols - 1)
+      const UNIT_POS = {
+        "101": { x: 38.55, y: 56.15 },
+        "102": { x: 38.55, y: 70.77 },
+        "103": { x: 43.09, y: 55.75 },
+        "104": { x: 43.27, y: 70.64 },
+        "105": { x: 47.73, y: 56.01 },
+        "106": { x: 47.64, y: 70.77 },
+        "107": { x: 52.91, y: 56.15 },
+        "108": { x: 52.82, y: 70.77 },
+        "109": { x: 58.00, y: 56.01 },
+        "110": { x: 57.73, y: 70.64 },
+        "111": { x: 63.18, y: 56.15 },
+        "112": { x: 63.18, y: 70.77 },
+        "113": { x: 67.82, y: 56.28 },
+        "114": { x: 68.00, y: 71.04 },
+        "115": { x: 73.09, y: 56.28 },
+        "116": { x: 73.00, y: 71.04 },
+        "117": { x: 78.55, y: 56.15 },
+        "118": { x: 78.36, y: 71.04 },
+        "119": { x: 84.18, y: 56.01 },
+        "120": { x: 84.18, y: 70.77 },
+        "121": { x: 90.27, y: 56.55 },
+        "122": { x: 90.18, y: 70.90 },
 
-          const w = pitch
-          const rowGap = Math.abs(opts.yBottom - opts.yTop)
-          const h = rowGap * 0.95
+        "201": { x: 37.82, y: 9.61 },
+        "202": { x: 37.64, y: 24.10 },
+        "203": { x: 42.27, y: 9.74 },
+        "204": { x: 42.64, y: 24.10 },
+        "205": { x: 47.00, y: 9.88 },
+        "206": { x: 47.00, y: 23.97 },
+        "207": { x: 52.27, y: 10.01 },
+        "208": { x: 52.00, y: 23.97 },
+        "209": { x: 57.27, y: 9.88 },
+        "210": { x: 57.18, y: 24.10 },
+        "211": { x: 62.36, y: 9.88 },
+        "212": { x: 62.00, y: 24.10 },
+        "213": { x: 67.00, y: 9.61 },
+        "214": { x: 67.27, y: 24.50 },
+        "215": { x: 72.36, y: 9.74 },
+        "216": { x: 72.09, y: 24.24 },
+        "217": { x: 77.73, y: 9.74 },
+        "218": { x: 77.45, y: 24.63 },
+        "219": { x: 83.73, y: 9.88 },
+        "220": { x: 83.27, y: 24.37 },
+        "221": { x: 89.27, y: 9.74 },
+        "222": { x: 89.36, y: 24.50 }
+      }
 
-          function addRow(codes, yCenter) {
-            for (let i = 0; i < cols; i++) {
-              const code = String(codes[i])
-              const cx = opts.xStart + pitch * i
-              rects[code] = {
-                left: cx - w / 2,
-                top: yCenter - h / 2,
-                width: w,
-                height: h
-              }
-            }
-          }
+      function avg(nums) {
+        if (!nums.length) return null
+        let s = 0
+        for (const n of nums) s += n
+        return s / nums.length
+      }
 
-          addRow(opts.codesTop, opts.yTop)
-          addRow(opts.codesBottom, opts.yBottom)
+      function xyFor(code) {
+        const p = UNIT_POS[String(code)]
+        if (!p || typeof p.x !== "number" || typeof p.y !== "number") return null
+        return p
+      }
+
+      function buildRectsFromCenters(rowTop, rowBot) {
+        const cols = Math.max(rowTop.length, rowBot.length)
+        if (!cols) return {}
+
+        const xCenters = []
+        for (let i = 0; i < cols; i++) {
+          const a = xyFor(rowTop[i])
+          const b = xyFor(rowBot[i])
+          const xs = []
+          if (a) xs.push(a.x)
+          if (b) xs.push(b.x)
+          const x = avg(xs)
+          if (x == null) return {}
+          xCenters.push(x)
         }
 
-        addGrid({
-          cols: 11,
-          xStart: 38.55,
-          xEnd: 90.23,
-          yTop: 56.25,
-          yBottom: 70.80,
-          codesTop: [101,103,105,107,109,111,113,115,117,119,121],
-          codesBottom: [102,104,106,108,110,112,114,116,118,120,122]
-        })
+        const yTop = avg(rowTop.map(c => xyFor(c)).filter(Boolean).map(p => p.y))
+        const yBot = avg(rowBot.map(c => xyFor(c)).filter(Boolean).map(p => p.y))
+        if (yTop == null || yBot == null) return {}
 
-        addGrid({
-          cols: 11,
-          xStart: 37.73,
-          xEnd: 89.32,
-          yTop: 9.85,
-          yBottom: 24.25,
-          codesTop: [201,203,205,207,209,211,213,215,217,219,221],
-          codesBottom: [202,204,206,208,210,212,214,216,218,220,222]
-        })
+        const yMid = (yTop + yBot) / 2
+        const yTopOuter = 2 * yTop - yMid
+        const yBotOuter = 2 * yBot - yMid
+
+        const xWalls = []
+        xWalls.push(xCenters[0] - (xCenters[1] - xCenters[0]) / 2)
+        for (let i = 0; i < cols - 1; i++) {
+          xWalls.push((xCenters[i] + xCenters[i + 1]) / 2)
+        }
+        xWalls.push(xCenters[cols - 1] + (xCenters[cols - 1] - xCenters[cols - 2]) / 2)
+
+        const rects = {}
+
+        for (let i = 0; i < cols; i++) {
+          const left = xWalls[i]
+          const right = xWalls[i + 1]
+          const w = right - left
+
+          const ct = rowTop[i]
+          const cb = rowBot[i]
+
+          if (ct != null) {
+            rects[String(ct)] = { left, top: yTopOuter, width: w, height: (yMid - yTopOuter) }
+          }
+          if (cb != null) {
+            rects[String(cb)] = { left, top: yMid, width: w, height: (yBotOuter - yMid) }
+          }
+        }
 
         return rects
       }
 
-      const UNIT_RECT = buildGridRects()
+      function clampRect(r) {
+        const left = Math.max(0, Math.min(100, r.left))
+        const top = Math.max(0, Math.min(100, r.top))
+        const width = Math.max(0, Math.min(100 - left, r.width))
+        const height = Math.max(0, Math.min(100 - top, r.height))
+        return { left, top, width, height }
+      }
+
+      const UNIT_RECT = Object.assign(
+        {},
+        buildRectsFromCenters(ROW_1ETG_TOP, ROW_1ETG_BOT),
+        buildRectsFromCenters(ROW_2ETG_TOP, ROW_2ETG_BOT)
+      )
 
       function renderMap(rows) {
         elMapLayer.innerHTML = ""
 
         for (const r of rows) {
           const code = String(r.unit_code || "")
-          const rect = UNIT_RECT[code]
-          if (!rect) continue
+          const raw = UNIT_RECT[code]
+          if (!raw) continue
+          const rect = clampRect(raw)
 
           const box = document.createElement("div")
           box.className = "unitBox " + unitColorClass(r)
-          box.style.left = rect.left + "%"
-          box.style.top = rect.top + "%"
-          box.style.width = rect.width + "%"
-          box.style.height = rect.height + "%"
+
+          box.style.left = rect.left.toFixed(4) + "%"
+          box.style.top = rect.top.toFixed(4) + "%"
+          box.style.width = rect.width.toFixed(4) + "%"
+          box.style.height = rect.height.toFixed(4) + "%"
+
           box.title = "Enhet " + code
 
           box.addEventListener("click", () => {
@@ -338,12 +420,12 @@
           }
 
           const rows = await res.json()
-          const lastRows = Array.isArray(rows) ? rows : []
+          const list = Array.isArray(rows) ? rows : []
 
           setMsg("")
-          fillUnitSelect(lastRows)
-          renderMap(lastRows)
-          for (const r of lastRows) addRow(r)
+          fillUnitSelect(list)
+          renderMap(list)
+          for (const rr of list) addRow(rr)
         } catch (e) {
           setMsg("Klarte ikke å hente data")
         }
@@ -449,6 +531,7 @@
       initIdentity()
       identityReady.then(() => loadUnits())
     </script>
+
+    
   </body>
 </html>
-
