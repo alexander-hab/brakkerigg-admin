@@ -24,26 +24,20 @@
       .mapImg { width: 100%; height: auto; display: block; border: 1px solid #ddd; border-radius: 8px; }
       .mapLayer { position: absolute; inset: 0; }
 
-      .unitDot {
+      .unitArea {
         position: absolute;
-        width: 14px;
-        height: 14px;
-        border-radius: 50%;
-        border: 2px solid rgba(0,0,0,0.25);
-        transform: translate(-50%, -50%);
+        border: 2px solid rgba(0,0,0,0.22);
+        border-radius: 4px;
+        box-sizing: border-box;
         cursor: pointer;
       }
 
-      .unitGreen { background: #22c55e; }
-      .unitYellow { background: #eab308; }
-      .unitRed { background: #ef4444; }
-
-      .pickGrid { display: grid; grid-template-columns: 160px 1fr; gap: 10px; align-items: center; margin-top: 12px; }
-      .pickRow { display: grid; grid-template-columns: 1fr 160px; gap: 10px; }
-      .small { font-size: 12px; }
-      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+      .unitGreen { background: rgba(34, 197, 94, 0.35); }
+      .unitYellow { background: rgba(234, 179, 8, 0.35); }
+      .unitRed { background: rgba(239, 68, 68, 0.35); }
     </style>
   </head>
+
   <body>
     <div class="bar">
       <h2 style="margin:0">Brakkerigg admin</h2>
@@ -56,28 +50,10 @@
 
     <div class="card">
       <h3 style="margin-top:0">Kart</h3>
-
       <div class="mapWrap" id="mapWrap">
         <img class="mapImg" src="/admin/kart.png" alt="Kart over enheter" />
         <div class="mapLayer" id="mapLayer"></div>
       </div>
-
-      <div class="pickGrid">
-        <div class="muted small">Slik setter du posisjon</div>
-        <div class="small">
-          Skriv enhetskode. Trykk Aktiver. Klikk på kartet der enheten ligger. Linjen blir lagt i feltet under.
-        </div>
-      </div>
-
-      <div class="pickRow" style="margin-top:10px">
-        <input id="pickUnitCode" placeholder="Enhet, f.eks 101 eller 215" />
-        <button id="pickToggleBtn" type="button">Aktiver plassering</button>
-      </div>
-
-      <div class="muted small" style="margin-top:10px">
-        Kopier linjene under og lim de inn i UNIT_POS i koden når du er ferdig.
-      </div>
-      <textarea id="pickOutput" class="mono" rows="6" readonly placeholder="Klikk på kartet når plassering er aktiv"></textarea>
     </div>
 
     <div class="card">
@@ -152,11 +128,7 @@
       const elUnitSelect = document.getElementById("unitId")
       const elWho = document.getElementById("who")
 
-      const elMapWrap = document.getElementById("mapWrap")
       const elMapLayer = document.getElementById("mapLayer")
-      const elPickUnitCode = document.getElementById("pickUnitCode")
-      const elPickToggleBtn = document.getElementById("pickToggleBtn")
-      const elPickOutput = document.getElementById("pickOutput")
 
       function setMsg(t) {
         elMsg.textContent = t || ""
@@ -249,112 +221,88 @@
         return "unitGreen"
       }
 
-      const UNIT_POS = {
-        "101": { x: 38.55, y: 56.15 },
-        "102": { x: 38.55, y: 70.77 },
-        "103": { x: 43.09, y: 55.75 },
-        "104": { x: 43.27, y: 70.64 },
-        "105": { x: 47.73, y: 56.01 },
-        "106": { x: 47.64, y: 70.77 },
-        "107": { x: 52.91, y: 56.15 },
-        "108": { x: 52.82, y: 70.77 },
-        "109": { x: 58.00, y: 56.01 },
-        "110": { x: 57.73, y: 70.64 },
-        "111": { x: 63.18, y: 56.15 },
-        "112": { x: 63.18, y: 70.77 },
-        "113": { x: 67.82, y: 56.28 },
-        "114": { x: 68.00, y: 71.04 },
-        "115": { x: 73.09, y: 56.28 },
-        "116": { x: 73.00, y: 71.04 },
-        "117": { x: 78.55, y: 56.15 },
-        "118": { x: 78.36, y: 71.04 },
-        "119": { x: 84.18, y: 56.01 },
-        "120": { x: 84.18, y: 70.77 },
-        "121": { x: 90.27, y: 56.55 },
-        "122": { x: 90.18, y: 70.90 },
-        "201": { x: 37.82, y: 9.61 },
-        "202": { x: 37.64, y: 24.10 },
-        "203": { x: 42.27, y: 9.74 },
-        "204": { x: 42.64, y: 24.10 },
-        "205": { x: 47.00, y: 9.88 },
-        "206": { x: 47.00, y: 23.97 },
-        "207": { x: 52.27, y: 10.01 },
-        "208": { x: 52.00, y: 23.97 },
-        "209": { x: 57.27, y: 9.88 },
-        "210": { x: 57.18, y: 24.10 },
-        "211": { x: 62.36, y: 9.88 },
-        "212": { x: 62.00, y: 24.10 },
-        "213": { x: 67.00, y: 9.61 },
-        "214": { x: 67.27, y: 24.50 },
-        "215": { x: 72.36, y: 9.74 },
-        "216": { x: 72.09, y: 24.24 },
-        "217": { x: 77.73, y: 9.74 },
-        "218": { x: 77.45, y: 24.63 },
-        "219": { x: 83.73, y: 9.88 },
-        "220": { x: 83.27, y: 24.37 },
-        "221": { x: 89.27, y: 9.74 },
-        "222": { x: 89.36, y: 24.50 }
+      const DEFAULT_W = 4.80
+      const DEFAULT_H = 12.40
+
+      const UNIT_AREAS = {
+        "101": { cx: 38.55, cy: 56.15 },
+        "102": { cx: 38.55, cy: 70.77 },
+        "103": { cx: 43.09, cy: 55.75 },
+        "104": { cx: 43.27, cy: 70.64 },
+        "105": { cx: 47.73, cy: 56.01 },
+        "106": { cx: 47.64, cy: 70.77 },
+        "107": { cx: 52.91, cy: 56.15 },
+        "108": { cx: 52.82, cy: 70.77 },
+        "109": { cx: 58.00, cy: 56.01 },
+        "110": { cx: 57.73, cy: 70.64 },
+        "111": { cx: 63.18, cy: 56.15 },
+        "112": { cx: 63.18, cy: 70.77 },
+        "113": { cx: 67.82, cy: 56.28 },
+        "114": { cx: 68.00, cy: 71.04 },
+        "115": { cx: 73.09, cy: 56.28 },
+        "116": { cx: 73.00, cy: 71.04 },
+        "117": { cx: 78.55, cy: 56.15 },
+        "118": { cx: 78.36, cy: 71.04 },
+        "119": { cx: 84.18, cy: 56.01 },
+        "120": { cx: 84.18, cy: 70.77 },
+        "121": { cx: 90.27, cy: 56.55 },
+        "122": { cx: 90.18, cy: 70.90 },
+
+        "201": { cx: 37.82, cy: 9.61 },
+        "202": { cx: 37.64, cy: 24.10 },
+        "203": { cx: 42.27, cy: 9.74 },
+        "204": { cx: 42.64, cy: 24.10 },
+        "205": { cx: 47.00, cy: 9.88 },
+        "206": { cx: 47.00, cy: 23.97 },
+        "207": { cx: 52.27, cy: 10.01 },
+        "208": { cx: 52.00, cy: 23.97 },
+        "209": { cx: 57.27, cy: 9.88 },
+        "210": { cx: 57.18, cy: 24.10 },
+        "211": { cx: 62.36, cy: 9.88 },
+        "212": { cx: 62.00, cy: 24.10 },
+        "213": { cx: 67.00, cy: 9.61 },
+        "214": { cx: 67.27, cy: 24.50 },
+        "215": { cx: 72.36, cy: 9.74 },
+        "216": { cx: 72.09, cy: 24.24 },
+        "217": { cx: 77.73, cy: 9.74 },
+        "218": { cx: 77.45, cy: 24.63 },
+        "219": { cx: 83.73, cy: 9.88 },
+        "220": { cx: 83.27, cy: 24.37 },
+        "221": { cx: 89.27, cy: 9.74 },
+        "222": { cx: 89.36, cy: 24.50 }
       }
 
-      function ensureMapDots(rows) {
+      function ensureMapAreas(rows) {
         elMapLayer.innerHTML = ""
 
         for (const r of rows) {
           const code = String(r.unit_code || "")
-          const pos = UNIT_POS[code]
-          if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") continue
+          const a = UNIT_AREAS[code]
+          if (!a || typeof a.cx !== "number" || typeof a.cy !== "number") continue
 
-          const dot = document.createElement("div")
-          dot.className = "unitDot " + unitColorClass(r)
-          dot.style.left = pos.x + "%"
-          dot.style.top = pos.y + "%"
-          dot.title = "Enhet " + code
+          const w = typeof a.w === "number" ? a.w : DEFAULT_W
+          const h = typeof a.h === "number" ? a.h : DEFAULT_H
 
-          dot.addEventListener("click", () => {
+          const left = a.cx - (w / 2)
+          const top = a.cy - (h / 2)
+
+          const area = document.createElement("div")
+          area.className = "unitArea " + unitColorClass(r)
+          area.style.left = left + "%"
+          area.style.top = top + "%"
+          area.style.width = w + "%"
+          area.style.height = h + "%"
+          area.title = "Enhet " + code
+
+          area.addEventListener("click", () => {
             const st = statusText(r)
-            alert("Enhet " + code + "\n" + st)
+            const next = r.next_checkin_date ? ("Neste: " + r.next_checkin_date + " til " + r.next_checkout_date) : ""
+            alert("Enhet " + code + "\n" + st + (next ? ("\n" + next) : ""))
           })
 
-          elMapLayer.appendChild(dot)
+          elMapLayer.appendChild(area)
         }
       }
-
-      let pickEnabled = false
-      let lastRows = []
-
-      function togglePick() {
-        pickEnabled = !pickEnabled
-        elPickToggleBtn.textContent = pickEnabled ? "Deaktiver plassering" : "Aktiver plassering"
-      }
-
-      function appendPickLine(code, x, y) {
-        const line = `"${code}": { x: ${x.toFixed(2)}, y: ${y.toFixed(2)} },`
-        elPickOutput.value = (elPickOutput.value ? elPickOutput.value + "\n" : "") + line
-      }
-
-      function setPos(code, x, y) {
-        UNIT_POS[code] = { x, y }
-        ensureMapDots(lastRows)
-      }
-
-      elPickToggleBtn.addEventListener("click", togglePick)
-
-      elMapWrap.addEventListener("click", (e) => {
-        if (!pickEnabled) return
-
-        const code = String((elPickUnitCode.value || "").trim())
-        if (!code) {
-          alert("Skriv enhetskode først, f.eks 101")
-          return
-        }
-
-        const r = elMapWrap.getBoundingClientRect()
-        const x = ((e.clientX - r.left) / r.width) * 100
-        const y = ((e.clientY - r.top) / r.height) * 100
-
-        appendPickLine(code, x, y)
-        setPos(code, x, y)
-      })
 
       let identityReadyResolve
       const identityReady = new Promise((res) => { identityReadyResolve = res })
@@ -367,6 +315,8 @@
         if (!token) return extra
         return { ...extra, Authorization: "Bearer " + token }
       }
+
+      let lastRows = []
 
       async function loadUnits() {
         setMsg("Henter data")
@@ -393,7 +343,7 @@
 
           setMsg("")
           fillUnitSelect(lastRows)
-          ensureMapDots(lastRows)
+          ensureMapAreas(lastRows)
           for (const r of lastRows) addRow(r)
         } catch (e) {
           setMsg("Klarte ikke å hente data")
