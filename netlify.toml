@@ -1,64 +1,31 @@
-[[redirects]]
-  from = "/.netlify/*"
-  to = "/.netlify/:splat"
-  status = 200
-
 [build]
   publish = "."
-  command = "npm install"
+  functions = "netlify/functions"
 
-[functions]
-  directory = "netlify/functions"
-
+# 1) API må alltid gå rett til functions. Ingen Role-regler her.
 [[redirects]]
-  from = "/api/units"
-  to = "/.netlify/functions/units"
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
   status = 200
   force = true
-  conditions = { Role = ["admin"] }
 
-[[redirects]]
-  from = "/api/units"
-  to = "/login/"
-  status = 302
-
-[[redirects]]
-  from = "/api/create-booking"
-  to = "/.netlify/functions/create-booking"
-  status = 200
-  force = true
-  conditions = { Role = ["admin"] }
-
-[[redirects]]
-  from = "/api/create-booking"
-  to = "/login/"
-  status = 302
-
+# 2) Admin og login er vanlige HTML-sider
 [[redirects]]
   from = "/admin"
-  to = "/admin/"
-  status = 301
-
-[[redirects]]
-  from = "/admin/"
   to = "/admin/index.html"
   status = 200
-  force = true
-  conditions = { Role = ["admin"] }
 
 [[redirects]]
-  from = "/admin/"
-  to = "/login/"
-  status = 302
-
-[[redirects]]
-  from = "/admin/index.html"
+  from = "/admin/*"
   to = "/admin/index.html"
   status = 200
-  force = true
-  conditions = { Role = ["admin"] }
 
 [[redirects]]
-  from = "/admin/index.html"
-  to = "/login/"
-  status = 302
+  from = "/login"
+  to = "/login/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/login/*"
+  to = "/login/index.html"
+  status = 200
