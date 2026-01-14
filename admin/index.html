@@ -37,6 +37,8 @@
       .unitYellow { background: rgba(234,179,8,0.33); }
 
       .btnSmall { padding: 6px 10px; }
+      .upLine { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+      .upText { white-space: nowrap; }
     </style>
   </head>
 
@@ -74,6 +76,7 @@
               <th>Lengde nå</th>
               <th>Sum dager utleid ferdig</th>
               <th>Neste booking</th>
+              <th>Kommende bookinger</th>
               <th>Handling</th>
             </tr>
           </thead>
@@ -158,17 +161,72 @@
 
       function statusText(row) {
         if (row.current_booking_id) return "Utleid"
-        if (row.next_checkin_date) return "Ledig, booket"
+        const up = getUpcoming(row)
+        if (row.next_checkin_date || up.length > 0) return "Ledig, booket"
         return "Ledig"
       }
 
       function nextText(row) {
-        if (!row.next_checkin_date) return ""
-        return row.next_checkin_date + " til " + row.next_checkout_date
+        if (row.next_checkin_date) return row.next_checkin_date + " til " + row.next_checkout_date
+        const up = getUpcoming(row)
+        if (up.length === 0) return ""
+        return (up[0].checkin_date || "") + " til " + (up[0].checkout_date || "")
       }
 
       function clearTable() {
         elTbody.innerHTML = ""
+      }
+
+      function safeJsonParseArray(x) {
+        if (Array.isArray(x)) return x
+        if (typeof x !== "string") return []
+        try {
+          const p = JSON.parse(x)
+          return Array.isArray(p) ? p : []
+        } catch {
+          return []
+        }
+      }
+
+      function getUpcoming(row) {
+        const up = safeJsonParseArray(row.upcoming_bookings)
+        up.sort((a, b) => String(a.checkin_date || "").localeCompare(String(b.checkin_date || "")))
+        return up
+      }
+
+      function upcomingCell(row) {
+        const td = document.createElement("td")
+        const up = getUpcoming(row)
+
+        if (up.length === 0) {
+          td.textContent = ""
+          return td
+        }
+
+        const wrap = document.createElement("div")
+
+        for (const b of up) {
+          const line = document.createElement("div")
+          line.className = "upLine"
+
+          const txt = document.createElement("div")
+          txt.className = "upText"
+          const who = (b.company || b.tenant_name) ? (" " + (b.company || b.tenant_name)) : ""
+          txt.textContent = (b.checkin_date || "") + " til " + (b.checkout_date || "") + who
+
+          const del = document.createElement("button")
+          del.type = "button"
+          del.className = "btnSmall"
+          del.textContent = "Slett"
+          del.addEventListener("click", () => deleteBooking(Number(b.id)))
+
+          line.appendChild(txt)
+          line.appendChild(del)
+          wrap.appendChild(line)
+        }
+
+        td.appendChild(wrap)
+        return td
       }
 
       function addRow(row) {
@@ -197,6 +255,8 @@
           tr.appendChild(td)
         }
 
+        tr.appendChild(upcomingCell(row))
+
         const tdActions = document.createElement("td")
 
         if (row.current_booking_id) {
@@ -206,16 +266,6 @@
           btn.textContent = "Slett aktiv"
           btn.addEventListener("click", () => deleteBooking(Number(row.current_booking_id)))
           tdActions.appendChild(btn)
-        }
-
-        if (row.next_booking_id) {
-          const btn2 = document.createElement("button")
-          btn2.type = "button"
-          btn2.className = "btnSmall"
-          btn2.style.marginLeft = "8px"
-          btn2.textContent = "Slett neste"
-          btn2.addEventListener("click", () => deleteBooking(Number(row.next_booking_id)))
-          tdActions.appendChild(btn2)
         }
 
         tr.appendChild(tdActions)
@@ -237,8 +287,11 @@
 
         if (row.current_booking_id) return "unitRed"
 
-        if (row.next_checkin_date) {
-          if (today < row.next_checkin_date) return "unitYellow"
+        const up = getUpcoming(row)
+        const nextStart = row.next_checkin_date || (up[0] ? up[0].checkin_date : null)
+
+        if (nextStart) {
+          if (today < nextStart) return "unitYellow"
           return "unitRed"
         }
 
@@ -404,7 +457,17 @@
             if (r.current_tenant_name) lines.push("Leietaker: " + r.current_tenant_name)
             if (r.current_checkin_date) lines.push("Inn: " + r.current_checkin_date)
             if (r.current_checkout_date) lines.push("Ut: " + r.current_checkout_date)
-            if (!r.current_booking_id && r.next_checkin_date) lines.push("Neste: " + nextText(r))
+
+            const up = getUpcoming(r)
+            if (!r.current_booking_id && up.length > 0) {
+              lines.push("Kommende:")
+              for (let i = 0; i < Math.min(5, up.length); i++) {
+                const b = up[i]
+                const who = (b.company || b.tenant_name) ? (" " + (b.company || b.tenant_name)) : ""
+                lines.push((b.checkin_date || "") + " til " + (b.checkout_date || "") + who)
+              }
+            }
+
             alert(lines.join("\n"))
           })
 
