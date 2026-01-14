@@ -10,7 +10,7 @@
     <style>
       body { font-family: Arial, sans-serif; padding: 24px; max-width: 1200px; }
       button { padding: 10px 14px; cursor: pointer; }
-      input, select { padding: 8px; width: 100%; box-sizing: border-box; }
+      input, select, textarea { padding: 8px; width: 100%; box-sizing: border-box; }
       .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
       .bar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; }
       .msg { margin: 12px 0; color: #333; }
@@ -19,6 +19,28 @@
       th { border-top: none; }
       .card { border: 1px solid #ddd; padding: 16px; border-radius: 8px; margin-top: 18px; }
       .muted { color: #555; }
+
+      .mapWrap { position: relative; width: 100%; max-width: 1100px; }
+      .mapImg { width: 100%; height: auto; display: block; border: 1px solid #ddd; border-radius: 8px; }
+      .mapLayer { position: absolute; inset: 0; }
+
+      .unitDot {
+        position: absolute;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 2px solid rgba(0,0,0,0.25);
+        transform: translate(-50%, -50%);
+        cursor: pointer;
+      }
+
+      .unitGreen { background: #22c55e; }
+      .unitRed { background: #ef4444; }
+
+      .pickGrid { display: grid; grid-template-columns: 160px 1fr; gap: 10px; align-items: center; margin-top: 12px; }
+      .pickRow { display: grid; grid-template-columns: 1fr 160px; gap: 10px; }
+      .small { font-size: 12px; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
     </style>
   </head>
   <body>
@@ -30,6 +52,32 @@
     </div>
 
     <div class="msg" id="msg"></div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Kart</h3>
+
+      <div class="mapWrap" id="mapWrap">
+        <img class="mapImg" src="/admin/kart.png" alt="Kart over enheter" />
+        <div class="mapLayer" id="mapLayer"></div>
+      </div>
+
+      <div class="pickGrid">
+        <div class="muted small">Slik setter du posisjon</div>
+        <div class="small">
+          Skriv enhetskode. Trykk Aktiver. Klikk på kartet der enheten ligger. Linjen blir lagt i feltet under.
+        </div>
+      </div>
+
+      <div class="pickRow" style="margin-top:10px">
+        <input id="pickUnitCode" placeholder="Enhet, f.eks 101 eller 215" />
+        <button id="pickToggleBtn" type="button">Aktiver plassering</button>
+      </div>
+
+      <div class="muted small" style="margin-top:10px">
+        Kopier linjene under og lim de inn i UNIT_POS i koden når du er ferdig.
+      </div>
+      <textarea id="pickOutput" class="mono" rows="6" readonly placeholder="Klikk på kartet når plassering er aktiv"></textarea>
+    </div>
 
     <div class="card">
       <h3 style="margin-top:0">Oversikt</h3>
@@ -102,6 +150,12 @@
       const elTbody = document.getElementById("tbody")
       const elUnitSelect = document.getElementById("unitId")
       const elWho = document.getElementById("who")
+
+      const elMapWrap = document.getElementById("mapWrap")
+      const elMapLayer = document.getElementById("mapLayer")
+      const elPickUnitCode = document.getElementById("pickUnitCode")
+      const elPickToggleBtn = document.getElementById("pickToggleBtn")
+      const elPickOutput = document.getElementById("pickOutput")
 
       function setMsg(t) {
         elMsg.textContent = t || ""
@@ -181,6 +235,76 @@
         }
       }
 
+      function unitIsBooked(row) {
+        return Boolean(row.current_booking_id || row.next_checkin_date)
+      }
+
+      const UNIT_POS = {
+        // Lim inn linjene du genererer her.
+        // Eksempel:
+        // "101": { x: 12.34, y: 56.78 },
+      }
+
+      function ensureMapDots(rows) {
+        elMapLayer.innerHTML = ""
+
+        for (const r of rows) {
+          const code = String(r.unit_code || "")
+          const pos = UNIT_POS[code]
+          if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") continue
+
+          const dot = document.createElement("div")
+          dot.className = "unitDot " + (unitIsBooked(r) ? "unitRed" : "unitGreen")
+          dot.style.left = pos.x + "%"
+          dot.style.top = pos.y + "%"
+          dot.title = "Enhet " + code
+
+          dot.addEventListener("click", () => {
+            const st = statusText(r)
+            alert("Enhet " + code + "\n" + st)
+          })
+
+          elMapLayer.appendChild(dot)
+        }
+      }
+
+      let pickEnabled = false
+      let lastRows = []
+
+      function togglePick() {
+        pickEnabled = !pickEnabled
+        elPickToggleBtn.textContent = pickEnabled ? "Deaktiver plassering" : "Aktiver plassering"
+      }
+
+      function appendPickLine(code, x, y) {
+        const line = `"${code}": { x: ${x.toFixed(2)}, y: ${y.toFixed(2)} },`
+        elPickOutput.value = (elPickOutput.value ? elPickOutput.value + "\n" : "") + line
+      }
+
+      function setPos(code, x, y) {
+        UNIT_POS[code] = { x, y }
+        ensureMapDots(lastRows)
+      }
+
+      elPickToggleBtn.addEventListener("click", togglePick)
+
+      elMapWrap.addEventListener("click", (e) => {
+        if (!pickEnabled) return
+
+        const code = String((elPickUnitCode.value || "").trim())
+        if (!code) {
+          alert("Skriv enhetskode først, f.eks 101")
+          return
+        }
+
+        const r = elMapWrap.getBoundingClientRect()
+        const x = ((e.clientX - r.left) / r.width) * 100
+        const y = ((e.clientY - r.top) / r.height) * 100
+
+        appendPickLine(code, x, y)
+        setPos(code, x, y)
+      })
+
       let identityReadyResolve
       const identityReady = new Promise((res) => { identityReadyResolve = res })
 
@@ -214,9 +338,12 @@
           }
 
           const rows = await res.json()
+          lastRows = Array.isArray(rows) ? rows : []
+
           setMsg("")
-          fillUnitSelect(rows)
-          for (const r of rows) addRow(r)
+          fillUnitSelect(lastRows)
+          ensureMapDots(lastRows)
+          for (const r of lastRows) addRow(r)
         } catch (e) {
           setMsg("Klarte ikke å hente data")
         }
@@ -260,7 +387,8 @@
           })
 
           if (res.status === 401 || res.status === 403) {
-            window.location.href = "/login/"
+            const t = await res.text()
+            setMsg(t || "Ingen tilgang")
             return
           }
 
@@ -322,3 +450,4 @@
     </script>
   </body>
 </html>
+
