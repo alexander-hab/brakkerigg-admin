@@ -3,129 +3,428 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin</title>
+    <title>Brakkerigg admin</title>
 
     <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 
     <style>
-      body { font-family: Arial, sans-serif; padding: 24px; max-width: 1200px; }
-      button { padding: 10px 14px; cursor: pointer; }
-      input, select { padding: 8px; width: 100%; box-sizing: border-box; }
-      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-      .bar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; }
-      .msg { margin: 12px 0; color: #333; }
-      table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-      th, td { text-align: left; border-top: 1px solid #ddd; padding: 8px; vertical-align: top; }
-      th { border-top: none; }
-      .card { border: 1px solid #ddd; padding: 16px; border-radius: 8px; margin-top: 18px; }
-      .muted { color: #555; }
+      :root{
+        --bg:#f6f7fb;
+        --card:#ffffff;
+        --text:#0f172a;
+        --muted:#64748b;
+        --line:#e5e7eb;
+        --shadow: 0 10px 25px rgba(15,23,42,0.06);
+        --shadow2: 0 4px 12px rgba(15,23,42,0.06);
+        --r: 14px;
 
-      .mapWrap { position: relative; width: 100%; max-width: 1100px; }
-      .mapImg { width: 100%; height: auto; display: block; border: 1px solid #ddd; border-radius: 8px; }
-      .mapLayer { position: absolute; inset: 0; }
-
-      .unitBox {
-        position: absolute;
-        box-sizing: border-box;
-        border-radius: 2px;
-        cursor: pointer;
-        pointer-events: auto;
+        --green: rgba(34,197,94,0.30);
+        --red: rgba(239,68,68,0.30);
+        --yellow: rgba(234,179,8,0.30);
       }
 
-      .unitGreen { background: rgba(34,197,94,0.33); }
-      .unitRed { background: rgba(239,68,68,0.33); }
-      .unitYellow { background: rgba(234,179,8,0.33); }
+      *{ box-sizing:border-box; }
 
-      .btnSmall { padding: 6px 10px; }
-      .upLine { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
-      .upText { white-space: nowrap; }
+      body{
+        margin:0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      .wrap{
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 22px;
+      }
+
+      .topbar{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:14px;
+        margin-bottom: 18px;
+      }
+
+      .brand{
+        display:flex;
+        align-items:center;
+        gap:12px;
+        min-width: 240px;
+      }
+
+      .logo{
+        height: 34px;
+        width:auto;
+        display:block;
+        object-fit:contain;
+      }
+
+      .title{
+        display:flex;
+        flex-direction:column;
+        gap:2px;
+      }
+
+      .title h1{
+        font-size: 16px;
+        margin:0;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+      }
+
+      .title div{
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .actions{
+        display:flex;
+        align-items:center;
+        gap:10px;
+        flex-wrap:wrap;
+        justify-content:flex-end;
+      }
+
+      .who{
+        font-size: 12px;
+        color: var(--muted);
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: #fff;
+      }
+
+      .btn{
+        appearance:none;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--text);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-weight: 600;
+        cursor:pointer;
+        box-shadow: var(--shadow2);
+      }
+
+      .btn:hover{ filter: brightness(0.98); }
+      .btn:active{ transform: translateY(1px); }
+
+      .btnPrimary{
+        background: #0f172a;
+        color: #fff;
+        border-color:#0f172a;
+      }
+
+      .btnDanger{
+        background: #fff;
+        border-color: rgba(239,68,68,0.35);
+        color: #b91c1c;
+      }
+
+      .msg{
+        margin: 0 0 14px 0;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--text);
+        box-shadow: var(--shadow2);
+        display:none;
+      }
+
+      .grid{
+        display:grid;
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+
+      .card{
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        box-shadow: var(--shadow);
+        padding: 14px;
+      }
+
+      .cardHead{
+        display:flex;
+        align-items:baseline;
+        justify-content:space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+
+      .cardHead h2{
+        font-size: 14px;
+        margin: 0;
+        font-weight: 800;
+        letter-spacing: 0.2px;
+      }
+
+      .cardHead .hint{
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .mapWrap{ position: relative; width: 100%; max-width: 1100px; }
+      .mapImg{
+        width: 100%;
+        height: auto;
+        display:block;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+      }
+      .mapLayer{ position:absolute; inset:0; }
+
+      .unitBox{
+        position:absolute;
+        border-radius: 2px;
+        cursor:pointer;
+        pointer-events:auto;
+        border: 1px solid rgba(2,6,23,0.12);
+      }
+
+      .unitGreen{ background: var(--green); }
+      .unitRed{ background: var(--red); }
+      .unitYellow{ background: var(--yellow); }
+
+      .tableWrap{
+        overflow:auto;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+      }
+
+      table{
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 980px;
+        background:#fff;
+      }
+
+      thead th{
+        position: sticky;
+        top: 0;
+        background: #fbfbfd;
+        z-index: 1;
+        font-size: 12px;
+        color: #334155;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      th, td{
+        text-align:left;
+        border-top: 1px solid var(--line);
+        padding: 10px 10px;
+        vertical-align: top;
+        font-size: 13px;
+      }
+
+      tbody tr:hover{
+        background: #fafafa;
+      }
+
+      .pill{
+        display:inline-flex;
+        align-items:center;
+        gap:8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background:#fff;
+        font-size: 12px;
+        color: #0f172a;
+        white-space: nowrap;
+      }
+
+      .dot{
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #94a3b8;
+      }
+
+      .pillGreen .dot{ background: #22c55e; }
+      .pillRed .dot{ background: #ef4444; }
+      .pillYellow .dot{ background: #eab308; }
+
+      .formGrid{
+        display:grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      label{
+        display:block;
+        font-size: 12px;
+        color: #334155;
+        margin-bottom: 6px;
+        font-weight: 600;
+      }
+
+      input, select{
+        width:100%;
+        padding: 10px 10px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        font-size: 14px;
+        background: #fff;
+        outline: none;
+      }
+
+      input:focus, select:focus{
+        border-color: rgba(15,23,42,0.35);
+        box-shadow: 0 0 0 4px rgba(15,23,42,0.08);
+      }
+
+      .formActions{
+        margin-top: 12px;
+        display:flex;
+        gap:10px;
+        align-items:center;
+        justify-content:flex-start;
+        flex-wrap:wrap;
+      }
+
+      .muted{
+        color: var(--muted);
+        font-size: 12px;
+        margin: 0;
+      }
+
+      .btnSmall{
+        padding: 6px 10px;
+        border-radius: 10px;
+        font-weight: 700;
+        box-shadow: none;
+      }
+
+      .upLine{
+        display:flex;
+        gap: 8px;
+        align-items:center;
+        justify-content:space-between;
+        margin-bottom: 6px;
+      }
+
+      .upText{
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 340px;
+        color:#0f172a;
+      }
+
+      @media (max-width: 860px){
+        .formGrid{ grid-template-columns: 1fr; }
+        .actions{ justify-content:flex-start; }
+        .topbar{ flex-direction:column; align-items:flex-start; }
+      }
     </style>
   </head>
 
   <body>
-    <div class="bar">
-      <h2 style="margin:0">Brakkerigg admin</h2>
-      <button id="refreshBtn">Oppdater</button>
-      <button id="logoutBtn">Logg ut</button>
-      <span class="muted" id="who"></span>
-    </div>
+    <div class="wrap">
+      <div class="topbar">
+        <div class="brand">
+          <img class="logo" src="/admin/Hab.Logo.png" alt="HAB" />
+          <div class="title">
+            <h1>Brakkerigg admin</h1>
+            <div>Oversikt og booking</div>
+          </div>
+        </div>
 
-    <div class="msg" id="msg"></div>
-
-    <div class="card">
-      <h3 style="margin-top:0">Kart</h3>
-      <div class="mapWrap" id="mapWrap">
-        <img class="mapImg" src="/admin/kart.png" alt="Kart over enheter" />
-        <div class="mapLayer" id="mapLayer"></div>
+        <div class="actions">
+          <span class="who" id="who"></span>
+          <button class="btn" id="refreshBtn" type="button">Oppdater</button>
+          <button class="btn btnDanger" id="logoutBtn" type="button">Logg ut</button>
+        </div>
       </div>
-    </div>
 
-    <div class="card">
-      <h3 style="margin-top:0">Oversikt</h3>
-      <div style="overflow-x:auto">
-        <table>
-          <thead>
-            <tr>
-              <th>Enhet</th>
-              <th>Status</th>
-              <th>Leietaker nå</th>
-              <th>Firma</th>
-              <th>Innflytting</th>
-              <th>Utflytting</th>
-              <th>Dager igjen</th>
-              <th>Lengde nå</th>
-              <th>Sum dager utleid ferdig</th>
-              <th>Neste booking</th>
-              <th>Kommende bookinger</th>
-              <th>Handling</th>
-            </tr>
-          </thead>
-          <tbody id="tbody"></tbody>
-        </table>
+      <div class="msg" id="msg"></div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="cardHead">
+            <h2>Kart</h2>
+            <div class="hint">Klikk på et rom for detaljer</div>
+          </div>
+          <div class="mapWrap" id="mapWrap">
+            <img class="mapImg" src="/admin/kart.png" alt="Kart over enheter" />
+            <div class="mapLayer" id="mapLayer"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="cardHead">
+            <h2>Oversikt</h2>
+            <div class="hint">Sletting krever admin</div>
+          </div>
+
+          <div class="tableWrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Enhet</th>
+                  <th>Status</th>
+                  <th>Leietaker nå</th>
+                  <th>Firma</th>
+                  <th>Innflytting</th>
+                  <th>Utflytting</th>
+                  <th>Dager igjen</th>
+                  <th>Lengde nå</th>
+                  <th>Sum dager utleid ferdig</th>
+                  <th>Kommende bookinger</th>
+                  <th>Handling</th>
+                </tr>
+              </thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="cardHead">
+            <h2>Ny booking</h2>
+            <div class="hint">Minimum 7 netter</div>
+          </div>
+
+          <p class="muted">Utflytting er datoen de forlater enheten.</p>
+
+          <form id="form">
+            <div class="formGrid">
+              <div>
+                <label>Enhet</label>
+                <select id="unitId">
+                  <option value="">Velg</option>
+                </select>
+              </div>
+              <div>
+                <label>Firma</label>
+                <input id="company" />
+              </div>
+              <div>
+                <label>Leietaker</label>
+                <input id="tenantName" />
+              </div>
+              <div></div>
+              <div>
+                <label>Innflytting</label>
+                <input id="checkinDate" type="date" />
+              </div>
+              <div>
+                <label>Utflytting</label>
+                <input id="checkoutDate" type="date" />
+              </div>
+            </div>
+
+            <div class="formActions">
+              <button class="btn btnPrimary" type="submit">Opprett booking</button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
-
-    <div class="card">
-      <h3 style="margin-top:0">Ny booking</h3>
-      <p class="muted">Minimum 7 netter. Utflytting er datoen de forlater enheten.</p>
-
-      <form id="form">
-        <div class="row">
-          <div>
-            <label>Enhet</label>
-            <select id="unitId">
-              <option value="">Velg</option>
-            </select>
-          </div>
-          <div>
-            <label>Firma</label>
-            <input id="company" />
-          </div>
-        </div>
-
-        <div class="row" style="margin-top:12px">
-          <div>
-            <label>Leietaker</label>
-            <input id="tenantName" />
-          </div>
-          <div></div>
-        </div>
-
-        <div class="row" style="margin-top:12px">
-          <div>
-            <label>Innflytting</label>
-            <input id="checkinDate" type="date" />
-          </div>
-          <div>
-            <label>Utflytting</label>
-            <input id="checkoutDate" type="date" />
-          </div>
-        </div>
-
-        <div style="margin-top:12px">
-          <button type="submit">Opprett booking</button>
-        </div>
-      </form>
     </div>
 
     <script>
@@ -136,7 +435,13 @@
       const elMapLayer = document.getElementById("mapLayer")
 
       function setMsg(t) {
-        elMsg.textContent = t || ""
+        if (!t) {
+          elMsg.textContent = ""
+          elMsg.style.display = "none"
+          return
+        }
+        elMsg.textContent = t
+        elMsg.style.display = "block"
       }
 
       function isoToday() {
@@ -144,16 +449,6 @@
         const mm = String(d.getMonth() + 1).padStart(2, "0")
         const dd = String(d.getDate()).padStart(2, "0")
         return d.getFullYear() + "-" + mm + "-" + dd
-      }
-
-      function formatDateNo(iso) {
-        if (!iso || typeof iso !== "string") return ""
-        const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
-        if (!m) return iso
-        const yyyy = m[1]
-        const mm = m[2]
-        const dd = m[3]
-        return dd + "." + mm + "." + yyyy
       }
 
       function daysBetween(a, b) {
@@ -186,20 +481,35 @@
         return up
       }
 
-      function statusText(row) {
-        if (row.current_booking_id) return "Utleid"
+      function unitColorClass(row) {
+        const today = isoToday()
+        if (row.current_booking_id) return "unitRed"
+
         const up = getUpcoming(row)
-        if (row.next_checkin_date || up.length > 0) return "Ledig, booket"
-        return "Ledig"
+        const nextStart = row.next_checkin_date || (up[0] ? up[0].checkin_date : null)
+
+        if (nextStart) {
+          if (today < nextStart) return "unitYellow"
+          return "unitRed"
+        }
+        return "unitGreen"
       }
 
-      function nextText(row) {
-        if (row.next_checkin_date) {
-          return formatDateNo(row.next_checkin_date) + " til " + formatDateNo(row.next_checkout_date)
-        }
-        const up = getUpcoming(row)
-        if (up.length === 0) return ""
-        return formatDateNo(up[0].checkin_date || "") + " til " + formatDateNo(up[0].checkout_date || "")
+      function statusPill(row) {
+        const pill = document.createElement("span")
+        const cls = unitColorClass(row)
+        const dot = document.createElement("span")
+        dot.className = "dot"
+        pill.appendChild(dot)
+
+        let text = "Ledig"
+        pill.className = "pill"
+        if (cls === "unitRed") { pill.className += " pillRed"; text = "Utleid" }
+        else if (cls === "unitYellow") { pill.className += " pillYellow"; text = "Ledig, booket" }
+        else { pill.className += " pillGreen"; text = "Ledig" }
+
+        pill.appendChild(document.createTextNode(text))
+        return pill
       }
 
       function clearTable() {
@@ -224,15 +534,11 @@
           const txt = document.createElement("div")
           txt.className = "upText"
           const who = (b.company || b.tenant_name) ? (" " + (b.company || b.tenant_name)) : ""
-          txt.textContent =
-            formatDateNo(b.checkin_date || "") +
-            " til " +
-            formatDateNo(b.checkout_date || "") +
-            who
+          txt.textContent = (b.checkin_date || "") + " til " + (b.checkout_date || "") + who
 
           const del = document.createElement("button")
           del.type = "button"
-          del.className = "btnSmall"
+          del.className = "btn btnSmall btnDanger"
           del.textContent = "Slett"
           del.addEventListener("click", () => deleteBooking(Number(b.id)))
 
@@ -252,39 +558,55 @@
           ? daysBetween(row.current_checkin_date, row.current_checkout_date)
           : ""
 
-        const cells = [
-          row.unit_code,
-          statusText(row),
-          row.current_tenant_name || "",
-          row.current_company || "",
-          formatDateNo(row.current_checkin_date),
-          formatDateNo(row.current_checkout_date),
-          row.current_checkout_date ? daysLeft(row.current_checkout_date) : "",
-          lengthNow,
-          row.total_days_completed || 0,
-          nextText(row)
-        ]
+        const tdUnit = document.createElement("td")
+        tdUnit.textContent = row.unit_code || ""
+        tr.appendChild(tdUnit)
 
-        for (const c of cells) {
-          const td = document.createElement("td")
-          td.textContent = c
-          tr.appendChild(td)
-        }
+        const tdStatus = document.createElement("td")
+        tdStatus.appendChild(statusPill(row))
+        tr.appendChild(tdStatus)
+
+        const tdTenant = document.createElement("td")
+        tdTenant.textContent = row.current_tenant_name || ""
+        tr.appendChild(tdTenant)
+
+        const tdCompany = document.createElement("td")
+        tdCompany.textContent = row.current_company || ""
+        tr.appendChild(tdCompany)
+
+        const tdIn = document.createElement("td")
+        tdIn.textContent = row.current_checkin_date || ""
+        tr.appendChild(tdIn)
+
+        const tdOut = document.createElement("td")
+        tdOut.textContent = row.current_checkout_date || ""
+        tr.appendChild(tdOut)
+
+        const tdLeft = document.createElement("td")
+        tdLeft.textContent = row.current_checkout_date ? daysLeft(row.current_checkout_date) : ""
+        tr.appendChild(tdLeft)
+
+        const tdLen = document.createElement("td")
+        tdLen.textContent = lengthNow
+        tr.appendChild(tdLen)
+
+        const tdTotal = document.createElement("td")
+        tdTotal.textContent = row.total_days_completed || 0
+        tr.appendChild(tdTotal)
 
         tr.appendChild(upcomingCell(row))
 
         const tdActions = document.createElement("td")
-
         if (row.current_booking_id) {
           const btn = document.createElement("button")
           btn.type = "button"
-          btn.className = "btnSmall"
+          btn.className = "btn btnSmall btnDanger"
           btn.textContent = "Slett aktiv"
           btn.addEventListener("click", () => deleteBooking(Number(row.current_booking_id)))
           tdActions.appendChild(btn)
         }
-
         tr.appendChild(tdActions)
+
         elTbody.appendChild(tr)
       }
 
@@ -296,22 +618,6 @@
           opt.textContent = r.unit_code
           elUnitSelect.appendChild(opt)
         }
-      }
-
-      function unitColorClass(row) {
-        const today = isoToday()
-
-        if (row.current_booking_id) return "unitRed"
-
-        const up = getUpcoming(row)
-        const nextStart = row.next_checkin_date || (up[0] ? up[0].checkin_date : null)
-
-        if (nextStart) {
-          if (today < nextStart) return "unitYellow"
-          return "unitRed"
-        }
-
-        return "unitGreen"
       }
 
       const ROW_1ETG_TOP = [101,103,105,107,109,111,113,115,117,119,121]
@@ -421,12 +727,8 @@
           const ct = rowTop[i]
           const cb = rowBot[i]
 
-          if (ct != null) {
-            rects[String(ct)] = { left, top: yTopOuter, width: w, height: (yMid - yTopOuter) }
-          }
-          if (cb != null) {
-            rects[String(cb)] = { left, top: yMid, width: w, height: (yBotOuter - yMid) }
-          }
+          if (ct != null) rects[String(ct)] = { left, top: yTopOuter, width: w, height: (yMid - yTopOuter) }
+          if (cb != null) rects[String(cb)] = { left, top: yMid, width: w, height: (yBotOuter - yMid) }
         }
 
         return rects
@@ -468,19 +770,19 @@
           box.addEventListener("click", () => {
             const lines = []
             lines.push("Enhet " + code)
-            lines.push(statusText(r))
+            lines.push(statusPill(r).textContent || "")
             if (r.current_company) lines.push("Firma: " + r.current_company)
             if (r.current_tenant_name) lines.push("Leietaker: " + r.current_tenant_name)
-            if (r.current_checkin_date) lines.push("Inn: " + formatDateNo(r.current_checkin_date))
-            if (r.current_checkout_date) lines.push("Ut: " + formatDateNo(r.current_checkout_date))
+            if (r.current_checkin_date) lines.push("Inn: " + r.current_checkin_date)
+            if (r.current_checkout_date) lines.push("Ut: " + r.current_checkout_date)
 
             const up = getUpcoming(r)
             if (!r.current_booking_id && up.length > 0) {
               lines.push("Kommende:")
-              for (let i = 0; i < Math.min(5, up.length); i++) {
+              for (let i = 0; i < Math.min(6, up.length); i++) {
                 const b = up[i]
                 const who = (b.company || b.tenant_name) ? (" " + (b.company || b.tenant_name)) : ""
-                lines.push(formatDateNo(b.checkin_date || "") + " til " + formatDateNo(b.checkout_date || "") + who)
+                lines.push((b.checkin_date || "") + " til " + (b.checkout_date || "") + who)
               }
             }
 
@@ -505,7 +807,6 @@
 
       async function loadUnits() {
         setMsg("Henter data")
-        clearTable()
 
         try {
           await identityReady
@@ -527,10 +828,11 @@
           const list = Array.isArray(rows) ? rows : []
 
           setMsg("")
+          elTbody.innerHTML = ""
           fillUnitSelect(list)
           renderMap(list)
           for (const rr of list) addRow(rr)
-        } catch (e) {
+        } catch {
           setMsg("Klarte ikke å hente data")
         }
       }
@@ -596,7 +898,7 @@
           document.getElementById("checkoutDate").value = ""
 
           await loadUnits()
-        } catch (e) {
+        } catch {
           setMsg("Feil ved oppretting")
         }
       }
@@ -634,7 +936,7 @@
 
           setMsg("Booking slettet")
           await loadUnits()
-        } catch (e) {
+        } catch {
           setMsg("Feil ved sletting")
         }
       }
