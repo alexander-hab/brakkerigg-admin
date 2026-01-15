@@ -1,5 +1,21 @@
 import { neon } from "@netlify/neon"
 
+function toLowerRoles(rolesRaw) {
+  if (!Array.isArray(rolesRaw)) return []
+  return rolesRaw.map((r) => String(r).toLowerCase())
+}
+
+function parseUpcoming(x) {
+  if (Array.isArray(x)) return x
+  if (typeof x !== "string") return []
+  try {
+    const p = JSON.parse(x)
+    return Array.isArray(p) ? p : []
+  } catch {
+    return []
+  }
+}
+
 export const handler = async (event, context) => {
   try {
     const user = context?.clientContext?.user || null
@@ -12,20 +28,8 @@ export const handler = async (event, context) => {
       }
     }
 
-    const rolesRaw = user?.app_metadata?.roles || []
-    const roles = Array.isArray(rolesRaw)
-      ? rolesRaw.map((r) => String(r).toLowerCase())
-      : []
-
+    const roles = toLowerRoles(user?.app_metadata?.roles || [])
     const isAdmin = roles.includes("admin")
-
-    if (!isAdmin) {
-      return {
-        statusCode: 403,
-        headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-        body: JSON.stringify({ error: "Forbidden" })
-      }
-    }
 
     const sql = neon(process.env.DATABASE_URL)
 
@@ -99,10 +103,40 @@ export const handler = async (event, context) => {
       order by u.unit_code asc;
     `
 
+    if (isAdmin) {
+      return {
+        statusCode: 200,
+        headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+        body: JSON.stringify(rows)
+      }
+    }
+
+    const safeRows = rows.map((r) => {
+      const up = parseUpcoming(r.upcoming_bookings).map((b) => ({
+        checkin_date: b?.checkin_date || null,
+        checkout_date: b?.checkout_date || null
+      }))
+
+      return {
+        unit_id: r.unit_id,
+        unit_code: r.unit_code,
+
+        current_checkin_date: r.current_checkin_date || null,
+        current_checkout_date: r.current_checkout_date || null,
+
+        next_checkin_date: r.next_checkin_date || null,
+        next_checkout_date: r.next_checkout_date || null,
+
+        upcoming_bookings: up,
+
+        total_days_completed: r.total_days_completed || 0
+      }
+    })
+
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-      body: JSON.stringify(rows)
+      body: JSON.stringify(safeRows)
     }
   } catch (err) {
     return {

@@ -122,6 +122,17 @@
         color: #b91c1c;
       }
 
+      .btnSmall{
+        padding: 6px 10px;
+        border-radius: 10px;
+        font-weight: 700;
+        box-shadow: none;
+      }
+
+      .hidden{
+        display:none !important;
+      }
+
       .msg{
         margin: 0 0 14px 0;
         padding: 10px 12px;
@@ -293,13 +304,6 @@
         margin: 0;
       }
 
-      .btnSmall{
-        padding: 6px 10px;
-        border-radius: 10px;
-        font-weight: 700;
-        box-shadow: none;
-      }
-
       .upLine{
         display:flex;
         gap: 8px;
@@ -359,7 +363,7 @@
         <div class="card">
           <div class="cardHead">
             <h2>Oversikt</h2>
-            <div class="hint">Sletting krever admin</div>
+            <div class="hint">Endringer krever admin</div>
           </div>
 
           <div class="tableWrap">
@@ -368,15 +372,15 @@
                 <tr>
                   <th>Enhet</th>
                   <th>Status</th>
-                  <th>Leietaker nå</th>
-                  <th>Firma</th>
+                  <th class="adminOnly">Leietaker nå</th>
+                  <th class="adminOnly">Firma</th>
                   <th>Innflytting</th>
                   <th>Utflytting</th>
                   <th>Dager igjen</th>
                   <th>Lengde nå</th>
                   <th>Sum dager utleid ferdig</th>
                   <th>Kommende bookinger</th>
-                  <th>Handling</th>
+                  <th class="adminOnly">Handling</th>
                 </tr>
               </thead>
               <tbody id="tbody"></tbody>
@@ -384,7 +388,7 @@
           </div>
         </div>
 
-        <div class="card">
+        <div class="card" id="bookingCard">
           <div class="cardHead">
             <h2>Ny booking</h2>
             <div class="hint">Minimum 7 netter</div>
@@ -433,6 +437,9 @@
       const elUnitSelect = document.getElementById("unitId")
       const elWho = document.getElementById("who")
       const elMapLayer = document.getElementById("mapLayer")
+      const elBookingCard = document.getElementById("bookingCard")
+
+      let isAdminClient = false
 
       function setMsg(t) {
         if (!t) {
@@ -442,6 +449,22 @@
         }
         elMsg.textContent = t
         elMsg.style.display = "block"
+      }
+
+      function lowerRoles(rolesRaw) {
+        if (!Array.isArray(rolesRaw)) return []
+        return rolesRaw.map(r => String(r).toLowerCase())
+      }
+
+      function applyRoleUI() {
+        const adminOnly = document.querySelectorAll(".adminOnly")
+        for (const el of adminOnly) {
+          el.classList.toggle("hidden", !isAdminClient)
+        }
+
+        if (elBookingCard) {
+          elBookingCard.classList.toggle("hidden", !isAdminClient)
+        }
       }
 
       function isoToday() {
@@ -550,17 +573,22 @@
 
           const txt = document.createElement("div")
           txt.className = "upText"
+
           const who = (b.company || b.tenant_name) ? (" " + (b.company || b.tenant_name)) : ""
           txt.textContent = fmtRange(b.checkin_date || "", b.checkout_date || "") + who
 
-          const del = document.createElement("button")
-          del.type = "button"
-          del.className = "btn btnSmall btnDanger"
-          del.textContent = "Slett"
-          del.addEventListener("click", () => deleteBooking(Number(b.id)))
-
           line.appendChild(txt)
-          line.appendChild(del)
+
+          const bid = Number(b.id)
+          if (isAdminClient && Number.isFinite(bid) && bid > 0) {
+            const del = document.createElement("button")
+            del.type = "button"
+            del.className = "btn btnSmall btnDanger"
+            del.textContent = "Slett"
+            del.addEventListener("click", () => deleteBooking(bid))
+            line.appendChild(del)
+          }
+
           wrap.appendChild(line)
         }
 
@@ -584,10 +612,12 @@
         tr.appendChild(tdStatus)
 
         const tdTenant = document.createElement("td")
+        tdTenant.className = "adminOnly"
         tdTenant.textContent = row.current_tenant_name || ""
         tr.appendChild(tdTenant)
 
         const tdCompany = document.createElement("td")
+        tdCompany.className = "adminOnly"
         tdCompany.textContent = row.current_company || ""
         tr.appendChild(tdCompany)
 
@@ -614,7 +644,8 @@
         tr.appendChild(upcomingCell(row))
 
         const tdActions = document.createElement("td")
-        if (row.current_booking_id) {
+        tdActions.className = "adminOnly"
+        if (isAdminClient && row.current_booking_id) {
           const btn = document.createElement("button")
           btn.type = "button"
           btn.className = "btn btnSmall btnDanger"
@@ -830,8 +861,13 @@
           const headers = await authHeaders()
           const res = await fetch("/.netlify/functions/units", { headers })
 
-          if (res.status === 401 || res.status === 403) {
+          if (res.status === 401) {
             window.location.href = "/login/"
+            return
+          }
+
+          if (res.status === 403) {
+            setMsg("Du har ikke tilgang til oversikten.")
             return
           }
 
@@ -844,11 +880,13 @@
           const rows = await res.json()
           const list = Array.isArray(rows) ? rows : []
 
-          setMsg("")
           clearTable()
           fillUnitSelect(list)
           renderMap(list)
           for (const rr of list) addRow(rr)
+
+          if (!isAdminClient) setMsg("Lesetilgang. Du kan se oversikt, men ikke gjøre endringer.")
+          else setMsg("")
         } catch {
           setMsg("Klarte ikke å hente data")
         }
@@ -856,6 +894,12 @@
 
       async function createBooking(e) {
         e.preventDefault()
+
+        if (!isAdminClient) {
+          setMsg("Du har lesetilgang.")
+          return
+        }
+
         setMsg("")
 
         const unitId = document.getElementById("unitId").value
@@ -891,7 +935,12 @@
             })
           })
 
-          if (res.status === 401 || res.status === 403) {
+          if (res.status === 401) {
+            window.location.href = "/login/"
+            return
+          }
+
+          if (res.status === 403) {
             const t = await res.text()
             setMsg(t || "Ingen tilgang")
             return
@@ -921,6 +970,11 @@
       }
 
       async function deleteBooking(bookingId) {
+        if (!isAdminClient) {
+          setMsg("Du har lesetilgang.")
+          return
+        }
+
         if (!Number.isFinite(bookingId) || bookingId <= 0) {
           setMsg("Mangler booking id")
           return
@@ -939,7 +993,12 @@
             body: JSON.stringify({ booking_id: bookingId })
           })
 
-          if (res.status === 401 || res.status === 403) {
+          if (res.status === 401) {
+            window.location.href = "/login/"
+            return
+          }
+
+          if (res.status === 403) {
             const t = await res.text()
             setMsg(t || "Ingen tilgang")
             return
@@ -967,14 +1026,22 @@
 
       function initIdentity() {
         const ni = window.netlifyIdentity
-        if (!ni) return
+        if (!ni) {
+          setMsg("Fant ikke innloggingsmodulen")
+          return
+        }
 
         ni.on("init", (user) => {
           if (!user) {
             window.location.href = "/login/"
             return
           }
-          elWho.textContent = user.email || ""
+
+          const roles = lowerRoles(user?.app_metadata?.roles || [])
+          isAdminClient = roles.includes("admin")
+
+          elWho.textContent = (user.email || "") + (isAdminClient ? " (admin)" : " (lesetilgang)")
+          applyRoleUI()
           identityReadyResolve(user)
         })
 
