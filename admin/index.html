@@ -451,6 +451,23 @@
         return d.getFullYear() + "-" + mm + "-" + dd
       }
 
+      function fmtDate(s) {
+        if (!s) return ""
+        if (typeof s !== "string") return String(s)
+        const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+        if (!m) return s
+        return m[3] + "-" + m[2] + "-" + m[1]
+      }
+
+      function fmtRange(a, b) {
+        const aa = fmtDate(a)
+        const bb = fmtDate(b)
+        if (!aa && !bb) return ""
+        if (!aa) return bb
+        if (!bb) return aa
+        return aa + " til " + bb
+      }
+
       function daysBetween(a, b) {
         if (!a || !b) return ""
         const da = new Date(a)
@@ -534,7 +551,7 @@
           const txt = document.createElement("div")
           txt.className = "upText"
           const who = (b.company || b.tenant_name) ? (" " + (b.company || b.tenant_name)) : ""
-          txt.textContent = (b.checkin_date || "") + " til " + (b.checkout_date || "") + who
+          txt.textContent = fmtRange(b.checkin_date || "", b.checkout_date || "") + who
 
           const del = document.createElement("button")
           del.type = "button"
@@ -575,11 +592,11 @@
         tr.appendChild(tdCompany)
 
         const tdIn = document.createElement("td")
-        tdIn.textContent = row.current_checkin_date || ""
+        tdIn.textContent = fmtDate(row.current_checkin_date || "")
         tr.appendChild(tdIn)
 
         const tdOut = document.createElement("td")
-        tdOut.textContent = row.current_checkout_date || ""
+        tdOut.textContent = fmtDate(row.current_checkout_date || "")
         tr.appendChild(tdOut)
 
         const tdLeft = document.createElement("td")
@@ -773,8 +790,8 @@
             lines.push(statusPill(r).textContent || "")
             if (r.current_company) lines.push("Firma: " + r.current_company)
             if (r.current_tenant_name) lines.push("Leietaker: " + r.current_tenant_name)
-            if (r.current_checkin_date) lines.push("Inn: " + r.current_checkin_date)
-            if (r.current_checkout_date) lines.push("Ut: " + r.current_checkout_date)
+            if (r.current_checkin_date) lines.push("Inn: " + fmtDate(r.current_checkin_date))
+            if (r.current_checkout_date) lines.push("Ut: " + fmtDate(r.current_checkout_date))
 
             const up = getUpcoming(r)
             if (!r.current_booking_id && up.length > 0) {
@@ -782,7 +799,7 @@
               for (let i = 0; i < Math.min(6, up.length); i++) {
                 const b = up[i]
                 const who = (b.company || b.tenant_name) ? (" " + (b.company || b.tenant_name)) : ""
-                lines.push((b.checkin_date || "") + " til " + (b.checkout_date || "") + who)
+                lines.push(fmtRange(b.checkin_date || "", b.checkout_date || "") + who)
               }
             }
 
@@ -828,7 +845,7 @@
           const list = Array.isArray(rows) ? rows : []
 
           setMsg("")
-          elTbody.innerHTML = ""
+          clearTable()
           fillUnitSelect(list)
           renderMap(list)
           for (const rr of list) addRow(rr)
