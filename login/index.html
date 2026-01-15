@@ -12,6 +12,7 @@
       button { padding: 10px 14px; cursor: pointer; }
       .box { border: 1px solid #ddd; padding: 16px; border-radius: 8px; }
       .muted { color: #555; }
+      .row { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
     </style>
   </head>
   <body>
@@ -19,34 +20,99 @@
 
     <div class="box">
       <p class="muted" id="status">Sjekker innlogging</p>
-      <button id="loginBtn">Logg inn</button>
+
+      <div class="row">
+        <button id="loginBtn">Logg inn</button>
+        <button id="logoutBtn" style="display:none">Logg ut</button>
+      </div>
     </div>
 
     <script>
+      const elStatus = document.getElementById("status")
+      const elLogin = document.getElementById("loginBtn")
+      const elLogout = document.getElementById("logoutBtn")
+
       function show(msg) {
-        document.getElementById("status").textContent = msg
+        elStatus.textContent = msg || ""
+      }
+
+      function setLoggedInUi(isLoggedIn) {
+        elLogout.style.display = isLoggedIn ? "inline-block" : "none"
+        elLogin.textContent = isLoggedIn ? "Bytt bruker" : "Logg inn"
+      }
+
+      async function getAuthHeaders(extra = {}) {
+        const ni = window.netlifyIdentity
+        const user = ni && ni.currentUser ? ni.currentUser() : null
+        if (!user || !user.jwt) return extra
+        const token = await user.jwt()
+        if (!token) return extra
+        return { ...extra, Authorization: "Bearer " + token }
+      }
+
+      async function checkAdminAccessAndRedirect() {
+        const ni = window.netlifyIdentity
+        const user = ni && ni.currentUser ? ni.currentUser() : null
+
+        if (!user) {
+          setLoggedInUi(false)
+          show("Ikke innlogget")
+          return
+        }
+
+        setLoggedInUi(true)
+        show("Sjekker tilgang")
+
+        try {
+          const headers = await getAuthHeaders()
+          const res = await fetch("/.netlify/functions/units", { headers })
+
+          if (res.ok) {
+            window.location.href = "/admin/"
+            return
+          }
+
+          if (res.status === 403) {
+            show("Du er innlogget, men har ikke admin-tilgang")
+            return
+          }
+
+          if (res.status === 401) {
+            show("Du er ikke innlogget")
+            return
+          }
+
+          const t = await res.text()
+          show(t || ("Feil. Status " + res.status))
+        } catch (e) {
+          show("Klarte ikke å sjekke tilgang")
+        }
       }
 
       if (!window.netlifyIdentity) {
         show("Fant ikke innloggingsmodulen")
       } else {
-        window.netlifyIdentity.on("init", (user) => {
-          if (user) window.location.href = "/admin/"
-          else show("Ikke innlogget")
+        window.netlifyIdentity.on("init", () => {
+          checkAdminAccessAndRedirect()
         })
 
         window.netlifyIdentity.on("login", () => {
-          window.location.href = "/admin/"
+          checkAdminAccessAndRedirect()
         })
 
         window.netlifyIdentity.on("logout", () => {
+          setLoggedInUi(false)
           show("Logget ut")
         })
 
         window.netlifyIdentity.init()
 
-        document.getElementById("loginBtn").addEventListener("click", () => {
+        elLogin.addEventListener("click", () => {
           window.netlifyIdentity.open("login")
+        })
+
+        elLogout.addEventListener("click", () => {
+          window.netlifyIdentity.logout()
         })
       }
     </script>
