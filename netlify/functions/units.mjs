@@ -2,13 +2,29 @@ import { neon } from "@netlify/neon"
 
 export const handler = async (event, context) => {
   try {
-    const user = context?.clientContext?.user
-    const roles = (user?.app_metadata?.roles) || []
-    const lowerRoles = Array.isArray(roles) ? roles.map(r => String(r).toLowerCase()) : []
-    const isAdmin = user && lowerRoles.includes("admin")
+    const user = context?.clientContext?.user || null
+
+    if (!user) {
+      return {
+        statusCode: 401,
+        headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+        body: JSON.stringify({ error: "Unauthorized" })
+      }
+    }
+
+    const rolesRaw = user?.app_metadata?.roles || []
+    const roles = Array.isArray(rolesRaw)
+      ? rolesRaw.map((r) => String(r).toLowerCase())
+      : []
+
+    const isAdmin = roles.includes("admin")
 
     if (!isAdmin) {
-      return { statusCode: 403, body: "Forbidden" }
+      return {
+        statusCode: 403,
+        headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+        body: JSON.stringify({ error: "Forbidden" })
+      }
     }
 
     const sql = neon(process.env.DATABASE_URL)
@@ -85,10 +101,14 @@ export const handler = async (event, context) => {
 
     return {
       statusCode: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
       body: JSON.stringify(rows)
     }
   } catch (err) {
-    return { statusCode: 500, body: String(err?.message || err) }
+    return {
+      statusCode: 500,
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      body: JSON.stringify({ error: String(err?.message || err) })
+    }
   }
 }
