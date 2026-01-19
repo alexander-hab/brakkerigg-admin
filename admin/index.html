@@ -7,6 +7,9 @@
 
     <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
     <style>
       :root{
         --bg:#f6f7fb;
@@ -345,6 +348,14 @@
         color: var(--text);
       }
 
+      .printRow{
+        margin-top: 10px;
+        display:flex;
+        gap:10px;
+        align-items:center;
+        flex-wrap:wrap;
+      }
+
       @media (max-width: 860px){
         .formGrid{ grid-template-columns: 1fr; }
         .actions{ justify-content:flex-start; }
@@ -381,7 +392,7 @@
             <div class="hint">Klikk på et rom for detaljer</div>
           </div>
           <div class="mapWrap" id="mapWrap">
-            <img class="mapImg" src="/admin/kart.png" alt="Kart over enheter" />
+            <img class="mapImg" src="/admin/kart.png" alt="Kart over enheter" crossorigin="anonymous" />
             <div class="mapLayer" id="mapLayer"></div>
           </div>
         </div>
@@ -469,7 +480,7 @@
           </div>
 
           <div class="mapWrap" id="cleanMapWrap">
-            <img class="mapImg" src="/admin/kart.png" alt="Kart vask" />
+            <img class="mapImg" src="/admin/kart.png" alt="Kart vask" crossorigin="anonymous" />
             <div class="mapLayer" id="cleanMapLayer"></div>
           </div>
 
@@ -492,6 +503,11 @@
               <tbody id="cleanBody"></tbody>
             </table>
           </div>
+
+          <div class="printRow">
+            <button class="btn" id="printCleanBtn" type="button">Print ut vaske plan</button>
+            <span class="muted" id="printHint"></span>
+          </div>
         </div>
       </div>
     </div>
@@ -510,8 +526,20 @@
       const elCleanBody = document.getElementById("cleanBody")
       const elCleanMapLayer = document.getElementById("cleanMapLayer")
       const elCleanMapTitle = document.getElementById("cleanMapTitle")
+      const elPrintBtn = document.getElementById("printCleanBtn")
+      const elPrintHint = document.getElementById("printHint")
 
       let IS_ADMIN = false
+
+      let LAST_CLEAN = {
+        startIso: "",
+        endIso: "",
+        floor: 0,
+        movedExtra: 0,
+        cleanDateIso: "",
+        items: [],
+        moveOutSet: new Set()
+      }
 
       const CLEANING_CFG = {
         weekday: 1,
@@ -937,11 +965,6 @@
             box.appendChild(tag)
           }
 
-          box.addEventListener("click", () => {
-            if (isMoveOut) alert("Skal vaskes (utflytting): " + code)
-            else alert("Skal vaskes denne uka: " + code)
-          })
-
           elCleanMapLayer.appendChild(box)
         }
       }
@@ -1020,7 +1043,6 @@
           if (plan.has(code)) {
             const cur = plan.get(code)
             cur.info = cur.info ? (cur.info + ". " + info) : info
-            cur.reason = cur.reason
           } else {
             movedExtra += 1
             plan.set(code, { code, reason: "Utflytt-vask", info })
@@ -1054,6 +1076,128 @@
 
         const cleanSet = new Set(items.map(x => String(x.code)))
         renderCleaningMap(cleanSet, moveOutSet)
+
+        LAST_CLEAN = {
+          startIso,
+          endIso,
+          floor,
+          movedExtra,
+          cleanDateIso: endIso,
+          items,
+          moveOutSet
+        }
+
+        elPrintHint.textContent = ""
+      }
+
+      async function printCleaningPlanPdf() {
+        try {
+          elPrintHint.textContent = ""
+          elPrintBtn.disabled = true
+          elPrintBtn.textContent = "Lager PDF"
+
+          const wrap = document.getElementById("cleanMapWrap")
+          const canvas = await window.html2canvas(wrap, {
+            scale: 2,
+            backgroundColor: "#ffffff",
+            useCORS: true
+          })
+          const imgData = canvas.toDataURL("image/png")
+
+          const jspdf = window.jspdf
+          const doc = new jspdf.jsPDF({ unit: "pt", format: "a4" })
+
+          const pageW = doc.internal.pageSize.getWidth()
+          const pageH = doc.internal.pageSize.getHeight()
+          const margin = 40
+
+          let y = margin
+
+          doc.setFont("helvetica", "bold")
+          doc.setFontSize(16)
+          doc.text("Vaskeplan", margin, y)
+          y += 18
+
+          doc.setFont("helvetica", "normal")
+          doc.setFontSize(11)
+          const meta1 = "Vasking foregår " + fmtDate(LAST_CLEAN.cleanDateIso)
+          const meta2 = "Periode for utflytt-vask: " + fmtDate(LAST_CLEAN.startIso) + " til " + fmtDate(LAST_CLEAN.endIso)
+          const meta3 = "Etasje denne uka: " + String(LAST_CLEAN.floor) + ". Ekstra utflytt-vask: " + String(LAST_CLEAN.movedExtra) + "."
+
+          y = addWrappedText(doc, meta1, margin, y, pageW - margin * 2, 13)
+          y = addWrappedText(doc, meta2, margin, y, pageW - margin * 2, 13)
+          y = addWrappedText(doc, meta3, margin, y, pageW - margin * 2, 13)
+          y += 8
+
+          const imgMaxW = pageW - margin * 2
+          const imgW = imgMaxW
+          const imgH = imgW * (canvas.height / canvas.width)
+
+          if (y + imgH > pageH - margin) {
+            doc.addPage()
+            y = margin
+          }
+
+          doc.setDrawColor(229, 231, 235)
+          doc.setLineWidth(1)
+          doc.rect(margin, y, imgW, imgH)
+          doc.addImage(imgData, "PNG", margin, y, imgW, imgH)
+          y += imgH + 16
+
+          if (y > pageH - margin - 60) {
+            doc.addPage()
+            y = margin
+          }
+
+          doc.setFont("helvetica", "bold")
+          doc.setFontSize(12)
+          doc.text("Enheter som skal vaskes", margin, y)
+          y += 14
+
+          doc.setFont("helvetica", "normal")
+          doc.setFontSize(10)
+
+          const rows = Array.isArray(LAST_CLEAN.items) ? LAST_CLEAN.items : []
+          for (const it of rows) {
+            if (y > pageH - margin - 40) {
+              doc.addPage()
+              y = margin
+            }
+
+            const code = String(it.code || "")
+            const moveOut = LAST_CLEAN.moveOutSet && LAST_CLEAN.moveOutSet.has(code)
+            const reason = String(it.reason || "")
+            const info = String(it.info || "")
+            const line1 = code + "  " + reason + (moveOut ? " (utflytting)" : "")
+            y = addWrappedText(doc, line1, margin, y, pageW - margin * 2, 12)
+
+            if (info) {
+              y = addWrappedText(doc, "Info: " + info, margin + 12, y, pageW - margin * 2 - 12, 12)
+            }
+
+            y += 6
+          }
+
+          const filename =
+            "vaskeplan_" + fmtDate(LAST_CLEAN.cleanDateIso).split("-").reverse().join("") + ".pdf"
+
+          doc.save(filename)
+          elPrintHint.textContent = "PDF lastet ned"
+        } catch (e) {
+          elPrintHint.textContent = "Klarte ikke å lage PDF"
+        } finally {
+          elPrintBtn.disabled = false
+          elPrintBtn.textContent = "Print ut vaske plan"
+        }
+      }
+
+      function addWrappedText(doc, text, x, y, maxW, lineH) {
+        const parts = doc.splitTextToSize(String(text || ""), maxW)
+        for (const p of parts) {
+          doc.text(p, x, y)
+          y += lineH
+        }
+        return y
       }
 
       let identityReadyResolve
@@ -1268,6 +1412,7 @@
       document.getElementById("refreshBtn").addEventListener("click", loadUnits)
       document.getElementById("logoutBtn").addEventListener("click", logout)
       document.getElementById("form").addEventListener("submit", createBooking)
+      elPrintBtn.addEventListener("click", printCleaningPlanPdf)
 
       initIdentity()
       identityReady.then(() => loadUnits())
