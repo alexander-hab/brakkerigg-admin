@@ -184,12 +184,28 @@
         cursor:pointer;
         pointer-events:auto;
         border: 1px solid rgba(2,6,23,0.12);
+        overflow: hidden;
       }
 
       .unitGreen{ background: var(--green); }
       .unitRed{ background: var(--red); }
       .unitYellow{ background: var(--yellow); }
       .unitBlue{ background: var(--blue); }
+
+      .unitTag{
+        position:absolute;
+        left: 4px;
+        bottom: 4px;
+        font-size: 10px;
+        line-height: 1;
+        color: rgba(15,23,42,0.90);
+        background: rgba(255,255,255,0.65);
+        border: 1px solid rgba(2,6,23,0.14);
+        border-radius: 6px;
+        padding: 2px 6px;
+        pointer-events: none;
+        user-select: none;
+      }
 
       .tableWrap{
         overflow:auto;
@@ -442,10 +458,27 @@
         <div class="card" id="cleanCard">
           <div class="cardHead">
             <h2>Vaskeliste</h2>
-            <div class="hint" id="cleanHint"></div>
+            <div class="hint"></div>
           </div>
 
           <div class="cleanHeadline" id="cleanMeta"></div>
+
+          <div class="cardHead" style="margin-bottom:10px">
+            <h2 id="cleanMapTitle">Vasking foregår</h2>
+            <div class="hint">Blå rom skal vaskes</div>
+          </div>
+
+          <div class="mapWrap" id="cleanMapWrap">
+            <img class="mapImg" src="/admin/kart.png" alt="Kart vask" />
+            <div class="mapLayer" id="cleanMapLayer"></div>
+          </div>
+
+          <div style="height:12px"></div>
+
+          <div class="cardHead" style="margin-bottom:10px">
+            <h2>Enheter som skal vaskes</h2>
+            <div class="hint"></div>
+          </div>
 
           <div class="tableWrap">
             <table style="min-width:720px">
@@ -458,18 +491,6 @@
               </thead>
               <tbody id="cleanBody"></tbody>
             </table>
-          </div>
-
-          <div style="height:12px"></div>
-
-          <div class="cardHead" style="margin-bottom:10px">
-            <h2>Kart, vask denne uka</h2>
-            <div class="hint">Blå rom skal vaskes</div>
-          </div>
-
-          <div class="mapWrap" id="cleanMapWrap">
-            <img class="mapImg" src="/admin/kart.png" alt="Kart vask" />
-            <div class="mapLayer" id="cleanMapLayer"></div>
           </div>
         </div>
       </div>
@@ -485,10 +506,10 @@
       const elThActions = document.getElementById("thActions")
       const elAccessHint = document.getElementById("accessHint")
 
-      const elCleanHint = document.getElementById("cleanHint")
       const elCleanMeta = document.getElementById("cleanMeta")
       const elCleanBody = document.getElementById("cleanBody")
       const elCleanMapLayer = document.getElementById("cleanMapLayer")
+      const elCleanMapTitle = document.getElementById("cleanMapTitle")
 
       let IS_ADMIN = false
 
@@ -624,7 +645,6 @@
           txt.className = "upText"
           const who = (b.company || b.tenant_name) ? (" " + (b.company || b.tenant_name)) : ""
           txt.textContent = fmtRange(b.checkin_date || "", b.checkout_date || "") + who
-
           line.appendChild(txt)
 
           if (IS_ADMIN) {
@@ -890,7 +910,7 @@
         }
       }
 
-      function renderCleaningMap(cleanSet) {
+      function renderCleaningMap(cleanSet, moveOutSet) {
         elCleanMapLayer.innerHTML = ""
         const codes = Array.from(cleanSet || []).map(String)
 
@@ -907,10 +927,19 @@
           box.style.width = rect.width.toFixed(4) + "%"
           box.style.height = rect.height.toFixed(4) + "%"
 
-          box.title = "Skal vaskes: " + code
+          const isMoveOut = moveOutSet && moveOutSet.has(String(code))
+          box.title = isMoveOut ? ("Skal vaskes (utflytting): " + code) : ("Skal vaskes: " + code)
+
+          if (isMoveOut) {
+            const tag = document.createElement("div")
+            tag.className = "unitTag"
+            tag.textContent = "utflytting"
+            box.appendChild(tag)
+          }
 
           box.addEventListener("click", () => {
-            alert("Skal vaskes denne uka: " + code)
+            if (isMoveOut) alert("Skal vaskes (utflytting): " + code)
+            else alert("Skal vaskes denne uka: " + code)
           })
 
           elCleanMapLayer.appendChild(box)
@@ -960,7 +989,7 @@
         const startIso = toIsoDateLocal(prev)
         const endIso = toIsoDateLocal(next)
 
-        elCleanHint.textContent = "Vaskedag: " + fmtDate(endIso)
+        elCleanMapTitle.textContent = "Vasking foregår " + fmtDate(endIso)
 
         let moved = []
         try {
@@ -976,6 +1005,8 @@
           if (!movedMap.has(code)) movedMap.set(code, r)
         }
 
+        const moveOutSet = new Set(Array.from(movedMap.keys()).map(String))
+
         const plan = new Map()
         for (const code of floorUnits) {
           plan.set(code, { code, reason: "Ukevask " + floor + ". etg", info: "" })
@@ -989,6 +1020,7 @@
           if (plan.has(code)) {
             const cur = plan.get(code)
             cur.info = cur.info ? (cur.info + ". " + info) : info
+            cur.reason = cur.reason
           } else {
             movedExtra += 1
             plan.set(code, { code, reason: "Utflytt-vask", info })
@@ -1021,7 +1053,7 @@
         }
 
         const cleanSet = new Set(items.map(x => String(x.code)))
-        renderCleaningMap(cleanSet)
+        renderCleaningMap(cleanSet, moveOutSet)
       }
 
       let identityReadyResolve
