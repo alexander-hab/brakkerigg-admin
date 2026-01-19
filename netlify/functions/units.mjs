@@ -1,21 +1,5 @@
 import { neon } from "@netlify/neon"
 
-function toLowerRoles(rolesRaw) {
-  if (!Array.isArray(rolesRaw)) return []
-  return rolesRaw.map((r) => String(r).toLowerCase())
-}
-
-function parseUpcoming(x) {
-  if (Array.isArray(x)) return x
-  if (typeof x !== "string") return []
-  try {
-    const p = JSON.parse(x)
-    return Array.isArray(p) ? p : []
-  } catch {
-    return []
-  }
-}
-
 export const handler = async (event, context) => {
   try {
     const user = context?.clientContext?.user || null
@@ -27,9 +11,6 @@ export const handler = async (event, context) => {
         body: JSON.stringify({ error: "Unauthorized" })
       }
     }
-
-    const roles = toLowerRoles(user?.app_metadata?.roles || [])
-    const isAdmin = roles.includes("admin")
 
     const sql = neon(process.env.DATABASE_URL)
 
@@ -44,10 +25,6 @@ export const handler = async (event, context) => {
         cb.company as current_company,
         cb.checkin_date::text as current_checkin_date,
         cb.checkout_date::text as current_checkout_date,
-
-        nb.id as next_booking_id,
-        nb.checkin_date::text as next_checkin_date,
-        nb.checkout_date::text as next_checkout_date,
 
         coalesce(ub.upcoming_bookings, '[]'::json) as upcoming_bookings,
 
@@ -64,16 +41,6 @@ export const handler = async (event, context) => {
         order by b.checkin_date desc
         limit 1
       ) cb on true
-
-      left join lateral (
-        select b.*
-        from bookings b, today
-        where b.unit_id = u.id
-          and b.status <> 'cancelled'
-          and b.checkin_date > today.d
-        order by b.checkin_date asc
-        limit 1
-      ) nb on true
 
       left join lateral (
         select json_agg(
@@ -103,40 +70,10 @@ export const handler = async (event, context) => {
       order by u.unit_code asc;
     `
 
-    if (isAdmin) {
-      return {
-        statusCode: 200,
-        headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-        body: JSON.stringify(rows)
-      }
-    }
-
-    const safeRows = rows.map((r) => {
-      const up = parseUpcoming(r.upcoming_bookings).map((b) => ({
-        checkin_date: b?.checkin_date || null,
-        checkout_date: b?.checkout_date || null
-      }))
-
-      return {
-        unit_id: r.unit_id,
-        unit_code: r.unit_code,
-
-        current_checkin_date: r.current_checkin_date || null,
-        current_checkout_date: r.current_checkout_date || null,
-
-        next_checkin_date: r.next_checkin_date || null,
-        next_checkout_date: r.next_checkout_date || null,
-
-        upcoming_bookings: up,
-
-        total_days_completed: r.total_days_completed || 0
-      }
-    })
-
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-      body: JSON.stringify(safeRows)
+      body: JSON.stringify(rows)
     }
   } catch (err) {
     return {

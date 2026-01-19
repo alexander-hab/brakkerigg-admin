@@ -122,17 +122,6 @@
         color: #b91c1c;
       }
 
-      .btnSmall{
-        padding: 6px 10px;
-        border-radius: 10px;
-        font-weight: 700;
-        box-shadow: none;
-      }
-
-      .hidden{
-        display:none !important;
-      }
-
       .msg{
         margin: 0 0 14px 0;
         padding: 10px 12px;
@@ -304,6 +293,13 @@
         margin: 0;
       }
 
+      .btnSmall{
+        padding: 6px 10px;
+        border-radius: 10px;
+        font-weight: 700;
+        box-shadow: none;
+      }
+
       .upLine{
         display:flex;
         gap: 8px;
@@ -324,6 +320,7 @@
         .formGrid{ grid-template-columns: 1fr; }
         .actions{ justify-content:flex-start; }
         .topbar{ flex-direction:column; align-items:flex-start; }
+        table{ min-width: 920px; }
       }
     </style>
   </head>
@@ -334,8 +331,8 @@
         <div class="brand">
           <img class="logo" src="/admin/Hab.Logo.png" alt="HAB" />
           <div class="title">
-            <h1>Brakkerigg admin</h1>
-            <div>Oversikt og booking</div>
+            <h1>Brakkerigg</h1>
+            <div>Oversikt, vask og booking</div>
           </div>
         </div>
 
@@ -360,10 +357,31 @@
           </div>
         </div>
 
+        <div class="card" id="cleanCard">
+          <div class="cardHead">
+            <h2>Vaskeliste</h2>
+            <div class="hint" id="cleanHint"></div>
+          </div>
+          <p class="muted" id="cleanMeta"></p>
+
+          <div class="tableWrap">
+            <table style="min-width:720px">
+              <thead>
+                <tr>
+                  <th>Enhet</th>
+                  <th>Årsak</th>
+                  <th>Info</th>
+                </tr>
+              </thead>
+              <tbody id="cleanBody"></tbody>
+            </table>
+          </div>
+        </div>
+
         <div class="card">
           <div class="cardHead">
             <h2>Oversikt</h2>
-            <div class="hint">Endringer krever admin</div>
+            <div class="hint" id="accessHint"></div>
           </div>
 
           <div class="tableWrap">
@@ -372,15 +390,15 @@
                 <tr>
                   <th>Enhet</th>
                   <th>Status</th>
-                  <th class="adminOnly">Leietaker nå</th>
-                  <th class="adminOnly">Firma</th>
+                  <th>Leietaker nå</th>
+                  <th>Firma</th>
                   <th>Innflytting</th>
                   <th>Utflytting</th>
                   <th>Dager igjen</th>
                   <th>Lengde nå</th>
                   <th>Sum dager utleid ferdig</th>
                   <th>Kommende bookinger</th>
-                  <th class="adminOnly">Handling</th>
+                  <th id="thActions">Handling</th>
                 </tr>
               </thead>
               <tbody id="tbody"></tbody>
@@ -388,7 +406,7 @@
           </div>
         </div>
 
-        <div class="card" id="bookingCard">
+        <div class="card" id="createCard">
           <div class="cardHead">
             <h2>Ny booking</h2>
             <div class="hint">Minimum 7 netter</div>
@@ -437,9 +455,22 @@
       const elUnitSelect = document.getElementById("unitId")
       const elWho = document.getElementById("who")
       const elMapLayer = document.getElementById("mapLayer")
-      const elBookingCard = document.getElementById("bookingCard")
+      const elCreateCard = document.getElementById("createCard")
+      const elThActions = document.getElementById("thActions")
+      const elAccessHint = document.getElementById("accessHint")
 
-      let isAdminClient = false
+      const elCleanHint = document.getElementById("cleanHint")
+      const elCleanMeta = document.getElementById("cleanMeta")
+      const elCleanBody = document.getElementById("cleanBody")
+
+      let IS_ADMIN = false
+
+      const CLEANING_CFG = {
+        weekday: 1,
+        hour: 8,
+        minute: 0,
+        floor1On: "odd"
+      }
 
       function setMsg(t) {
         if (!t) {
@@ -451,27 +482,18 @@
         elMsg.style.display = "block"
       }
 
-      function lowerRoles(rolesRaw) {
-        if (!Array.isArray(rolesRaw)) return []
-        return rolesRaw.map(r => String(r).toLowerCase())
-      }
-
-      function applyRoleUI() {
-        const adminOnly = document.querySelectorAll(".adminOnly")
-        for (const el of adminOnly) {
-          el.classList.toggle("hidden", !isAdminClient)
-        }
-
-        if (elBookingCard) {
-          elBookingCard.classList.toggle("hidden", !isAdminClient)
-        }
-      }
-
       function isoToday() {
         const d = new Date()
         const mm = String(d.getMonth() + 1).padStart(2, "0")
         const dd = String(d.getDate()).padStart(2, "0")
         return d.getFullYear() + "-" + mm + "-" + dd
+      }
+
+      function toIsoDateLocal(d) {
+        const y = d.getFullYear()
+        const m = String(d.getMonth() + 1).padStart(2, "0")
+        const day = String(d.getDate()).padStart(2, "0")
+        return y + "-" + m + "-" + day
       }
 
       function fmtDate(s) {
@@ -526,7 +548,7 @@
         if (row.current_booking_id) return "unitRed"
 
         const up = getUpcoming(row)
-        const nextStart = row.next_checkin_date || (up[0] ? up[0].checkin_date : null)
+        const nextStart = up[0] ? up[0].checkin_date : null
 
         if (nextStart) {
           if (today < nextStart) return "unitYellow"
@@ -573,19 +595,17 @@
 
           const txt = document.createElement("div")
           txt.className = "upText"
-
           const who = (b.company || b.tenant_name) ? (" " + (b.company || b.tenant_name)) : ""
           txt.textContent = fmtRange(b.checkin_date || "", b.checkout_date || "") + who
 
           line.appendChild(txt)
 
-          const bid = Number(b.id)
-          if (isAdminClient && Number.isFinite(bid) && bid > 0) {
+          if (IS_ADMIN) {
             const del = document.createElement("button")
             del.type = "button"
             del.className = "btn btnSmall btnDanger"
             del.textContent = "Slett"
-            del.addEventListener("click", () => deleteBooking(bid))
+            del.addEventListener("click", () => deleteBooking(Number(b.id)))
             line.appendChild(del)
           }
 
@@ -612,12 +632,10 @@
         tr.appendChild(tdStatus)
 
         const tdTenant = document.createElement("td")
-        tdTenant.className = "adminOnly"
         tdTenant.textContent = row.current_tenant_name || ""
         tr.appendChild(tdTenant)
 
         const tdCompany = document.createElement("td")
-        tdCompany.className = "adminOnly"
         tdCompany.textContent = row.current_company || ""
         tr.appendChild(tdCompany)
 
@@ -643,17 +661,18 @@
 
         tr.appendChild(upcomingCell(row))
 
-        const tdActions = document.createElement("td")
-        tdActions.className = "adminOnly"
-        if (isAdminClient && row.current_booking_id) {
-          const btn = document.createElement("button")
-          btn.type = "button"
-          btn.className = "btn btnSmall btnDanger"
-          btn.textContent = "Slett aktiv"
-          btn.addEventListener("click", () => deleteBooking(Number(row.current_booking_id)))
-          tdActions.appendChild(btn)
+        if (IS_ADMIN) {
+          const tdActions = document.createElement("td")
+          if (row.current_booking_id) {
+            const btn = document.createElement("button")
+            btn.type = "button"
+            btn.className = "btn btnSmall btnDanger"
+            btn.textContent = "Slett aktiv"
+            btn.addEventListener("click", () => deleteBooking(Number(row.current_booking_id)))
+            tdActions.appendChild(btn)
+          }
+          tr.appendChild(tdActions)
         }
-        tr.appendChild(tdActions)
 
         elTbody.appendChild(tr)
       }
@@ -672,6 +691,9 @@
       const ROW_1ETG_BOT = [102,104,106,108,110,112,114,116,118,120,122]
       const ROW_2ETG_TOP = [201,203,205,207,209,211,213,215,217,219,221]
       const ROW_2ETG_BOT = [202,204,206,208,210,212,214,216,218,220,222]
+
+      const FLOOR1 = [...ROW_1ETG_TOP, ...ROW_1ETG_BOT].map(String).sort((a,b)=>Number(a)-Number(b))
+      const FLOOR2 = [...ROW_2ETG_TOP, ...ROW_2ETG_BOT].map(String).sort((a,b)=>Number(a)-Number(b))
 
       const UNIT_POS = {
         "101": { x: 38.55, y: 56.15 },
@@ -841,6 +863,109 @@
         }
       }
 
+      function isoWeekNumber(d) {
+        const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+        const dayNum = date.getUTCDay() || 7
+        date.setUTCDate(date.getUTCDate() + 4 - dayNum)
+        const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
+        return Math.ceil((((date - yearStart) / 86400000) + 1) / 7)
+      }
+
+      function nextCleaningDate(now) {
+        const wd = CLEANING_CFG.weekday
+        const h = CLEANING_CFG.hour
+        const m = CLEANING_CFG.minute
+
+        const candidate = new Date(now)
+        candidate.setHours(h, m, 0, 0)
+
+        let addDays = (wd - now.getDay() + 7) % 7
+        if (addDays === 0 && now.getTime() >= candidate.getTime()) addDays = 7
+
+        const next = new Date(now)
+        next.setDate(now.getDate() + addDays)
+        next.setHours(h, m, 0, 0)
+        return next
+      }
+
+      function floorForCleaning(d) {
+        const w = isoWeekNumber(d)
+        const odd = (w % 2) === 1
+        if (CLEANING_CFG.floor1On === "odd") return odd ? 1 : 2
+        return odd ? 2 : 1
+      }
+
+      async function loadCleaningPlan() {
+        const now = new Date()
+        const next = nextCleaningDate(now)
+        const prev = new Date(next.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+        const floor = floorForCleaning(next)
+        const floorUnits = floor === 1 ? FLOOR1 : FLOOR2
+
+        const startIso = toIsoDateLocal(prev)
+        const endIso = toIsoDateLocal(next)
+
+        elCleanHint.textContent = "Neste vaskedag: " + fmtDate(endIso)
+
+        let moved = []
+        try {
+          const headers = await authHeaders()
+          const res = await fetch("/.netlify/functions/cleaning-plan?start=" + startIso + "&end=" + endIso, { headers })
+          if (res.ok) moved = await res.json()
+        } catch {}
+
+        const movedMap = new Map()
+        for (const r of (Array.isArray(moved) ? moved : [])) {
+          const code = String(r.unit_code || "")
+          if (!code) continue
+          if (!movedMap.has(code)) movedMap.set(code, r)
+        }
+
+        const plan = new Map()
+        for (const code of floorUnits) {
+          plan.set(code, { code, reason: "Ukevask " + floor + ". etg", info: "" })
+        }
+
+        let movedExtra = 0
+        for (const [code, r] of movedMap.entries()) {
+          const who = (r.company || r.tenant_name) ? (" " + (r.company || r.tenant_name)) : ""
+          const info = "Utflytting: " + fmtDate(r.checkout_date || "") + who
+
+          if (plan.has(code)) {
+            const cur = plan.get(code)
+            cur.info = cur.info ? (cur.info + ". " + info) : info
+          } else {
+            movedExtra += 1
+            plan.set(code, { code, reason: "Utflytt-vask", info })
+          }
+        }
+
+        elCleanMeta.textContent =
+          "Periode for utflytt-vask: " + fmtDate(startIso) + " til " + fmtDate(endIso) +
+          ". Etasje denne uka: " + floor + ". Ekstra utflytt-vask: " + movedExtra + "."
+
+        elCleanBody.innerHTML = ""
+        const items = Array.from(plan.values()).sort((a, b) => Number(a.code) - Number(b.code))
+        for (const it of items) {
+          const tr = document.createElement("tr")
+
+          const tdA = document.createElement("td")
+          tdA.textContent = it.code
+          tr.appendChild(tdA)
+
+          const tdB = document.createElement("td")
+          tdB.textContent = it.reason
+          tr.appendChild(tdB)
+
+          const tdC = document.createElement("td")
+          tdC.textContent = it.info || ""
+          tr.appendChild(tdC)
+
+          elCleanBody.appendChild(tr)
+        }
+      }
+
       let identityReadyResolve
       const identityReady = new Promise((res) => { identityReadyResolve = res })
 
@@ -851,6 +976,24 @@
         const token = await user.jwt()
         if (!token) return extra
         return { ...extra, Authorization: "Bearer " + token }
+      }
+
+      function computeIsAdmin(user) {
+        const rolesRaw = user?.app_metadata?.roles || []
+        const roles = Array.isArray(rolesRaw) ? rolesRaw.map(r => String(r).toLowerCase()) : []
+        return roles.includes("admin")
+      }
+
+      function applyAccessUI() {
+        if (IS_ADMIN) {
+          elAccessHint.textContent = "Admin"
+          elCreateCard.style.display = "block"
+          elThActions.style.display = ""
+        } else {
+          elAccessHint.textContent = "Lesetilgang"
+          elCreateCard.style.display = "none"
+          elThActions.style.display = "none"
+        }
       }
 
       async function loadUnits() {
@@ -866,11 +1009,6 @@
             return
           }
 
-          if (res.status === 403) {
-            setMsg("Du har ikke tilgang til oversikten.")
-            return
-          }
-
           if (!res.ok) {
             const t = await res.text()
             setMsg(t || ("Klarte ikke å hente data. Status " + res.status))
@@ -880,13 +1018,13 @@
           const rows = await res.json()
           const list = Array.isArray(rows) ? rows : []
 
+          setMsg("")
           clearTable()
           fillUnitSelect(list)
           renderMap(list)
           for (const rr of list) addRow(rr)
 
-          if (!isAdminClient) setMsg("Lesetilgang. Du kan se oversikt, men ikke gjøre endringer.")
-          else setMsg("")
+          await loadCleaningPlan()
         } catch {
           setMsg("Klarte ikke å hente data")
         }
@@ -894,9 +1032,8 @@
 
       async function createBooking(e) {
         e.preventDefault()
-
-        if (!isAdminClient) {
-          setMsg("Du har lesetilgang.")
+        if (!IS_ADMIN) {
+          setMsg("Du har ikke rettigheter til å opprette booking")
           return
         }
 
@@ -935,12 +1072,7 @@
             })
           })
 
-          if (res.status === 401) {
-            window.location.href = "/login/"
-            return
-          }
-
-          if (res.status === 403) {
+          if (res.status === 401 || res.status === 403) {
             const t = await res.text()
             setMsg(t || "Ingen tilgang")
             return
@@ -970,8 +1102,8 @@
       }
 
       async function deleteBooking(bookingId) {
-        if (!isAdminClient) {
-          setMsg("Du har lesetilgang.")
+        if (!IS_ADMIN) {
+          setMsg("Du har ikke rettigheter til å slette booking")
           return
         }
 
@@ -993,12 +1125,7 @@
             body: JSON.stringify({ booking_id: bookingId })
           })
 
-          if (res.status === 401) {
-            window.location.href = "/login/"
-            return
-          }
-
-          if (res.status === 403) {
+          if (res.status === 401 || res.status === 403) {
             const t = await res.text()
             setMsg(t || "Ingen tilgang")
             return
@@ -1026,10 +1153,7 @@
 
       function initIdentity() {
         const ni = window.netlifyIdentity
-        if (!ni) {
-          setMsg("Fant ikke innloggingsmodulen")
-          return
-        }
+        if (!ni) return
 
         ni.on("init", (user) => {
           if (!user) {
@@ -1037,11 +1161,10 @@
             return
           }
 
-          const roles = lowerRoles(user?.app_metadata?.roles || [])
-          isAdminClient = roles.includes("admin")
+          IS_ADMIN = computeIsAdmin(user)
+          elWho.textContent = user.email || ""
+          applyAccessUI()
 
-          elWho.textContent = (user.email || "") + (isAdminClient ? " (admin)" : " (lesetilgang)")
-          applyRoleUI()
           identityReadyResolve(user)
         })
 
