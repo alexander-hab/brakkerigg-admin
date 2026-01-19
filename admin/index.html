@@ -21,6 +21,7 @@
         --green: rgba(34,197,94,0.30);
         --red: rgba(239,68,68,0.30);
         --yellow: rgba(234,179,8,0.30);
+        --blue: rgba(59,130,246,0.32);
       }
 
       *{ box-sizing:border-box; }
@@ -188,6 +189,7 @@
       .unitGreen{ background: var(--green); }
       .unitRed{ background: var(--red); }
       .unitYellow{ background: var(--yellow); }
+      .unitBlue{ background: var(--blue); }
 
       .tableWrap{
         overflow:auto;
@@ -316,6 +318,17 @@
         color:#0f172a;
       }
 
+      .cleanHeadline{
+        margin: 0 0 10px 0;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: #fbfbfd;
+        font-weight: 900;
+        font-size: 13px;
+        color: var(--text);
+      }
+
       @media (max-width: 860px){
         .formGrid{ grid-template-columns: 1fr; }
         .actions{ justify-content:flex-start; }
@@ -354,27 +367,6 @@
           <div class="mapWrap" id="mapWrap">
             <img class="mapImg" src="/admin/kart.png" alt="Kart over enheter" />
             <div class="mapLayer" id="mapLayer"></div>
-          </div>
-        </div>
-
-        <div class="card" id="cleanCard">
-          <div class="cardHead">
-            <h2>Vaskeliste</h2>
-            <div class="hint" id="cleanHint"></div>
-          </div>
-          <p class="muted" id="cleanMeta"></p>
-
-          <div class="tableWrap">
-            <table style="min-width:720px">
-              <thead>
-                <tr>
-                  <th>Enhet</th>
-                  <th>Årsak</th>
-                  <th>Info</th>
-                </tr>
-              </thead>
-              <tbody id="cleanBody"></tbody>
-            </table>
           </div>
         </div>
 
@@ -446,6 +438,40 @@
             </div>
           </form>
         </div>
+
+        <div class="card" id="cleanCard">
+          <div class="cardHead">
+            <h2>Vaskeliste</h2>
+            <div class="hint" id="cleanHint"></div>
+          </div>
+
+          <div class="cleanHeadline" id="cleanMeta"></div>
+
+          <div class="tableWrap">
+            <table style="min-width:720px">
+              <thead>
+                <tr>
+                  <th>Enhet</th>
+                  <th>Årsak</th>
+                  <th>Info</th>
+                </tr>
+              </thead>
+              <tbody id="cleanBody"></tbody>
+            </table>
+          </div>
+
+          <div style="height:12px"></div>
+
+          <div class="cardHead" style="margin-bottom:10px">
+            <h2>Kart, vask denne uka</h2>
+            <div class="hint">Blå rom skal vaskes</div>
+          </div>
+
+          <div class="mapWrap" id="cleanMapWrap">
+            <img class="mapImg" src="/admin/kart.png" alt="Kart vask" />
+            <div class="mapLayer" id="cleanMapLayer"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -462,6 +488,7 @@
       const elCleanHint = document.getElementById("cleanHint")
       const elCleanMeta = document.getElementById("cleanMeta")
       const elCleanBody = document.getElementById("cleanBody")
+      const elCleanMapLayer = document.getElementById("cleanMapLayer")
 
       let IS_ADMIN = false
 
@@ -863,6 +890,33 @@
         }
       }
 
+      function renderCleaningMap(cleanSet) {
+        elCleanMapLayer.innerHTML = ""
+        const codes = Array.from(cleanSet || []).map(String)
+
+        for (const code of codes) {
+          const raw = UNIT_RECT[code]
+          if (!raw) continue
+          const rect = clampRect(raw)
+
+          const box = document.createElement("div")
+          box.className = "unitBox unitBlue"
+
+          box.style.left = rect.left.toFixed(4) + "%"
+          box.style.top = rect.top.toFixed(4) + "%"
+          box.style.width = rect.width.toFixed(4) + "%"
+          box.style.height = rect.height.toFixed(4) + "%"
+
+          box.title = "Skal vaskes: " + code
+
+          box.addEventListener("click", () => {
+            alert("Skal vaskes denne uka: " + code)
+          })
+
+          elCleanMapLayer.appendChild(box)
+        }
+      }
+
       function isoWeekNumber(d) {
         const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
         const dayNum = date.getUTCDay() || 7
@@ -906,7 +960,7 @@
         const startIso = toIsoDateLocal(prev)
         const endIso = toIsoDateLocal(next)
 
-        elCleanHint.textContent = "Neste vaskedag: " + fmtDate(endIso)
+        elCleanHint.textContent = "Vaskedag: " + fmtDate(endIso)
 
         let moved = []
         try {
@@ -947,6 +1001,7 @@
 
         elCleanBody.innerHTML = ""
         const items = Array.from(plan.values()).sort((a, b) => Number(a.code) - Number(b.code))
+
         for (const it of items) {
           const tr = document.createElement("tr")
 
@@ -964,6 +1019,9 @@
 
           elCleanBody.appendChild(tr)
         }
+
+        const cleanSet = new Set(items.map(x => String(x.code)))
+        renderCleaningMap(cleanSet)
       }
 
       let identityReadyResolve
