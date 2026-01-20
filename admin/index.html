@@ -1320,8 +1320,11 @@
             return
           }
 
-          const rows = await res.json()
-          unitRows = Array.isArray(rows) ? rows : []
+          const payload = await res.json()
+          const rows = Array.isArray(payload)
+            ? payload
+            : (Array.isArray(payload?.rows) ? payload.rows : [])
+          unitRows = rows
 
           setMsg("")
           clearTable()
