@@ -1,0 +1,108 @@
+import { neon } from "@netlify/neon"
+
+function isAdmin(context) {
+  const user = context?.clientContext?.user || null
+  const rolesRaw = user?.app_metadata?.roles || []
+  const roles = Array.isArray(rolesRaw) ? rolesRaw.map(r => String(r).toLowerCase()) : []
+  return Boolean(user) && roles.includes("admin")
+}
+
+export const handler = async (event, context) => {
+  try {
+    if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method not allowed" }
+
+    const user = context?.clientContext?.user || null
+    if (!user) return { statusCode: 401, headers: { "Cache-Control": "no-store" }, body: "Unauthorized" }
+    if (!isAdmin(context)) return { statusCode: 403, headers: { "Cache-Control": "no-store" }, body: "Forbidden" }
+
+    let body = {}
+    try { body = event.body ? JSON.parse(event.body) : {} } catch { return { statusCode: 400, body: "Ugyldig JSON" } }
+
+    const lineId = Number(body.line_id)
+    const action = String(body.action || "").toLowerCase()
+
+    if (!lineId || (action !== "approve" && action !== "reject")) {
+      return { statusCode: 400, body: "Ugyldig input" }
+    }
+
+    const sql = neon(process.env.DATABASE_URL)
+
+    const found = await sql`
+      select
+        rl.*,
+        r.requester_email,
+        r.requester_phone
+      from booking_request_lines rl
+      join booking_requests r on r.id = rl.request_id
+      where rl.id = ${lineId}
+      limit 1;
+    `
+    const ln = found[0]
+    if (!ln) return { statusCode: 404, body: "Fant ikke linje" }
+    if (String(ln.status) !== "pending") return { statusCode: 409, body: "Allerede behandlet" }
+
+    if (action === "reject") {
+      await sql`
+        update booking_request_lines
+        set status = 'rejected',
+            decided_at = now(),
+            decided_by_user_id = ${String(user.id || "")}
+        where id = ${lineId};
+      `
+      return {
+        statusCode: 200,
+        headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+        body: JSON.stringify({ ok: true })
+      }
+    }
+
+    const unitId = Number(ln.unit_id)
+    const checkin = String(ln.checkin_date)
+    const checkout = String(ln.checkout_date)
+
+    const conflict = await sql`
+      select 1
+      from bookings b
+      where b.unit_id = ${unitId}
+        and b.status <> 'cancelled'
+        and b.checkin_date < ${checkout}::date
+        and b.checkout_date > ${checkin}::date
+      limit 1;
+    `
+    if (conflict.length > 0) return { statusCode: 409, body: "Konflikt. Enheten ble booket i mellomtiden" }
+
+    const inserted = await sql`
+      insert into bookings (unit_id, tenant_name, company, tenant_email, tenant_phone, checkin_date, checkout_date, status)
+      values (
+        ${unitId},
+        ${ln.tenant_name || null},
+        ${ln.company || null},
+        ${ln.requester_email || null},
+        ${ln.requester_phone || null},
+        ${checkin}::date,
+        ${checkout}::date,
+        'booked'
+      )
+      returning id;
+    `
+    const bookingId = inserted[0]?.id || null
+    if (!bookingId) return { statusCode: 500, body: "Klarte ikke å opprette booking" }
+
+    await sql`
+      update booking_request_lines
+      set status = 'approved',
+          approved_booking_id = ${bookingId},
+          decided_at = now(),
+          decided_by_user_id = ${String(user.id || "")}
+      where id = ${lineId};
+    `
+
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      body: JSON.stringify({ ok: true, booking_id: bookingId })
+    }
+  } catch (err) {
+    return { statusCode: 500, headers: { "Cache-Control": "no-store" }, body: String(err?.message || err) }
+  }
+}

@@ -1,10 +1,22 @@
 import { neon } from "@netlify/neon"
 
+function getViewer(context) {
+  const user = context?.clientContext?.user || null
+  const rolesRaw = user?.app_metadata?.roles || []
+  const roles = Array.isArray(rolesRaw) ? rolesRaw.map(r => String(r).toLowerCase()) : []
+  const isAdmin = Boolean(user) && roles.includes("admin")
+  return {
+    user,
+    email: user?.email || "",
+    isAdmin
+  }
+}
+
 export const handler = async (event, context) => {
   try {
-    const user = context?.clientContext?.user || null
+    const v = getViewer(context)
 
-    if (!user) {
+    if (!v.user) {
       return {
         statusCode: 401,
         headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
@@ -23,6 +35,8 @@ export const handler = async (event, context) => {
         cb.id as current_booking_id,
         cb.tenant_name as current_tenant_name,
         cb.company as current_company,
+        cb.tenant_email as current_tenant_email,
+        cb.tenant_phone as current_tenant_phone,
         cb.checkin_date::text as current_checkin_date,
         cb.checkout_date::text as current_checkout_date,
 
@@ -48,6 +62,8 @@ export const handler = async (event, context) => {
             'id', b.id,
             'tenant_name', b.tenant_name,
             'company', b.company,
+            'tenant_email', b.tenant_email,
+            'tenant_phone', b.tenant_phone,
             'checkin_date', b.checkin_date::text,
             'checkout_date', b.checkout_date::text
           )
@@ -73,7 +89,10 @@ export const handler = async (event, context) => {
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-      body: JSON.stringify(rows)
+      body: JSON.stringify({
+        viewer: { email: v.email, is_admin: v.isAdmin },
+        rows
+      })
     }
   } catch (err) {
     return {

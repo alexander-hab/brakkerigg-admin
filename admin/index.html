@@ -6,7 +6,6 @@
     <title>Brakkerigg admin</title>
 
     <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
-
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
@@ -24,7 +23,9 @@
         --green: rgba(34,197,94,0.30);
         --red: rgba(239,68,68,0.30);
         --yellow: rgba(234,179,8,0.30);
-        --blue: rgba(59,130,246,0.32);
+
+        --blue: rgba(59,130,246,0.30);
+        --blueBorder: rgba(29,78,216,0.35);
       }
 
       *{ box-sizing:border-box; }
@@ -73,7 +74,7 @@
       .title h1{
         font-size: 16px;
         margin:0;
-        font-weight: 700;
+        font-weight: 800;
         letter-spacing: 0.2px;
       }
 
@@ -99,6 +100,16 @@
         background: #fff;
       }
 
+      .badge{
+        font-size: 12px;
+        color: #0f172a;
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: #fff;
+        display:none;
+      }
+
       .btn{
         appearance:none;
         border: 1px solid var(--line);
@@ -106,7 +117,7 @@
         color: var(--text);
         border-radius: 10px;
         padding: 10px 12px;
-        font-weight: 600;
+        font-weight: 700;
         cursor:pointer;
         box-shadow: var(--shadow2);
       }
@@ -124,6 +135,19 @@
         background: #fff;
         border-color: rgba(239,68,68,0.35);
         color: #b91c1c;
+      }
+
+      .btnGhost{
+        background:#fff;
+        border-color: var(--line);
+        box-shadow:none;
+      }
+
+      .btnSmall{
+        padding: 6px 10px;
+        border-radius: 10px;
+        font-weight: 800;
+        box-shadow: none;
       }
 
       .msg{
@@ -162,13 +186,19 @@
       .cardHead h2{
         font-size: 14px;
         margin: 0;
-        font-weight: 800;
+        font-weight: 900;
         letter-spacing: 0.2px;
       }
 
       .cardHead .hint{
         font-size: 12px;
         color: var(--muted);
+      }
+
+      .muted{
+        color: var(--muted);
+        font-size: 12px;
+        margin: 0;
       }
 
       .mapWrap{ position: relative; width: 100%; max-width: 1100px; }
@@ -187,27 +217,40 @@
         cursor:pointer;
         pointer-events:auto;
         border: 1px solid rgba(2,6,23,0.12);
-        overflow: hidden;
       }
 
       .unitGreen{ background: var(--green); }
       .unitRed{ background: var(--red); }
       .unitYellow{ background: var(--yellow); }
-      .unitBlue{ background: var(--blue); }
 
-      .unitTag{
+      .washBox{
         position:absolute;
-        left: 4px;
-        bottom: 4px;
+        border-radius: 2px;
+        pointer-events:none;
+        border: 1px solid rgba(2,6,23,0.10);
+        background: transparent;
+        display:flex;
+        align-items:flex-end;
+        justify-content:flex-start;
+        padding: 2px 3px;
+        overflow:hidden;
+      }
+
+      .washBlue{
+        background: var(--blue);
+        border-color: var(--blueBorder);
+      }
+
+      .washTag{
         font-size: 10px;
-        line-height: 1;
-        color: rgba(15,23,42,0.90);
-        background: rgba(255,255,255,0.65);
-        border: 1px solid rgba(2,6,23,0.14);
+        font-weight: 800;
+        color: #0b2a6b;
+        background: rgba(255,255,255,0.75);
+        border: 1px solid rgba(29,78,216,0.20);
         border-radius: 6px;
-        padding: 2px 6px;
-        pointer-events: none;
-        user-select: none;
+        padding: 1px 5px;
+        line-height: 1.2;
+        white-space: nowrap;
       }
 
       .tableWrap{
@@ -270,21 +313,15 @@
       .pillRed .dot{ background: #ef4444; }
       .pillYellow .dot{ background: #eab308; }
 
-      .formGrid{
-        display:grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-      }
-
       label{
         display:block;
         font-size: 12px;
         color: #334155;
         margin-bottom: 6px;
-        font-weight: 600;
+        font-weight: 700;
       }
 
-      input, select{
+      input, select, textarea{
         width:100%;
         padding: 10px 10px;
         border: 1px solid var(--line);
@@ -294,9 +331,17 @@
         outline: none;
       }
 
-      input:focus, select:focus{
+      textarea{ min-height: 40px; resize: vertical; }
+
+      input:focus, select:focus, textarea:focus{
         border-color: rgba(15,23,42,0.35);
         box-shadow: 0 0 0 4px rgba(15,23,42,0.08);
+      }
+
+      .formGrid{
+        display:grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
       }
 
       .formActions{
@@ -306,19 +351,6 @@
         align-items:center;
         justify-content:flex-start;
         flex-wrap:wrap;
-      }
-
-      .muted{
-        color: var(--muted);
-        font-size: 12px;
-        margin: 0;
-      }
-
-      .btnSmall{
-        padding: 6px 10px;
-        border-radius: 10px;
-        font-weight: 700;
-        box-shadow: none;
       }
 
       .upLine{
@@ -333,34 +365,42 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 340px;
+        max-width: 360px;
         color:#0f172a;
       }
 
-      .cleanHeadline{
-        margin: 0 0 10px 0;
+      .kpi{
+        margin: 10px 0 12px 0;
         padding: 10px 12px;
-        border-radius: 12px;
         border: 1px solid var(--line);
+        border-radius: 12px;
         background: #fbfbfd;
-        font-weight: 900;
+        color: #0f172a;
+        font-weight: 800;
         font-size: 13px;
-        color: var(--text);
       }
 
-      .printRow{
-        margin-top: 10px;
-        display:flex;
-        gap:10px;
-        align-items:center;
-        flex-wrap:wrap;
+      .split{
+        display:grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .reqTable{
+        min-width: 980px;
       }
 
       @media (max-width: 860px){
         .formGrid{ grid-template-columns: 1fr; }
         .actions{ justify-content:flex-start; }
         .topbar{ flex-direction:column; align-items:flex-start; }
-        table{ min-width: 920px; }
+        table{ min-width: 900px; }
+      }
+
+      @media print{
+        body{ background:#fff; }
+        .topbar, .msg, #refreshBtn, #logoutBtn, #printWashBtn, .noPrint{ display:none !important; }
+        .card{ box-shadow:none; border: 1px solid #ddd; }
       }
     </style>
   </head>
@@ -377,6 +417,7 @@
         </div>
 
         <div class="actions">
+          <span class="badge" id="reqBadge"></span>
           <span class="who" id="who"></span>
           <button class="btn" id="refreshBtn" type="button">Oppdater</button>
           <button class="btn btnDanger" id="logoutBtn" type="button">Logg ut</button>
@@ -389,10 +430,10 @@
         <div class="card">
           <div class="cardHead">
             <h2>Kart</h2>
-            <div class="hint">Klikk på et rom for detaljer</div>
+            <div class="hint">Klikk på et rom</div>
           </div>
           <div class="mapWrap" id="mapWrap">
-            <img class="mapImg" src="/admin/kart.png" alt="Kart over enheter" crossorigin="anonymous" />
+            <img class="mapImg" src="/admin/kart.png" alt="Kart over enheter" />
             <div class="mapLayer" id="mapLayer"></div>
           </div>
         </div>
@@ -400,7 +441,7 @@
         <div class="card">
           <div class="cardHead">
             <h2>Oversikt</h2>
-            <div class="hint" id="accessHint"></div>
+            <div class="hint">Endringer krever admin</div>
           </div>
 
           <div class="tableWrap">
@@ -417,7 +458,7 @@
                   <th>Lengde nå</th>
                   <th>Sum dager utleid ferdig</th>
                   <th>Kommende bookinger</th>
-                  <th id="thActions">Handling</th>
+                  <th>Handling</th>
                 </tr>
               </thead>
               <tbody id="tbody"></tbody>
@@ -425,20 +466,28 @@
           </div>
         </div>
 
-        <div class="card" id="createCard">
+        <div class="card" id="bookingCard">
           <div class="cardHead">
             <h2>Ny booking</h2>
-            <div class="hint">Minimum 7 netter</div>
+            <div class="hint">Kun admin</div>
           </div>
 
-          <p class="muted">Utflytting er datoen de forlater enheten.</p>
+          <p class="muted">Utflytting er datoen de forlater enheten. Minimum 7 netter.</p>
 
           <form id="form">
             <div class="formGrid">
               <div>
+                <label>Innflytting</label>
+                <input id="checkinDate" type="date" />
+              </div>
+              <div>
+                <label>Utflytting</label>
+                <input id="checkoutDate" type="date" />
+              </div>
+              <div>
                 <label>Enhet</label>
-                <select id="unitId">
-                  <option value="">Velg</option>
+                <select id="unitId" disabled>
+                  <option value="">Velg datoer først</option>
                 </select>
               </div>
               <div>
@@ -449,15 +498,15 @@
                 <label>Leietaker</label>
                 <input id="tenantName" />
               </div>
+              <div>
+                <label>E-post</label>
+                <input id="tenantEmail" type="email" />
+              </div>
+              <div>
+                <label>Telefon</label>
+                <input id="tenantPhone" type="tel" />
+              </div>
               <div></div>
-              <div>
-                <label>Innflytting</label>
-                <input id="checkinDate" type="date" />
-              </div>
-              <div>
-                <label>Utflytting</label>
-                <input id="checkoutDate" type="date" />
-              </div>
             </div>
 
             <div class="formActions">
@@ -466,87 +515,151 @@
           </form>
         </div>
 
-        <div class="card" id="cleanCard">
+        <div class="card" id="washCard">
           <div class="cardHead">
-            <h2>Vaskeliste</h2>
-            <div class="hint"></div>
+            <h2 id="washTitle">Vasking</h2>
+            <div class="hint">Plan for uka</div>
           </div>
 
-          <div class="cleanHeadline" id="cleanMeta"></div>
+          <div class="kpi" id="washKpi"></div>
 
-          <div class="cardHead" style="margin-bottom:10px">
-            <h2 id="cleanMapTitle">Vasking foregår</h2>
-            <div class="hint">Blå rom skal vaskes</div>
+          <div class="cardHead" style="margin-top:2px">
+            <h2 style="font-size:13px; font-weight:900; margin:0">Vaskekart</h2>
+            <div class="hint">Blå betyr vask denne uka</div>
           </div>
 
-          <div class="mapWrap" id="cleanMapWrap">
-            <img class="mapImg" src="/admin/kart.png" alt="Kart vask" crossorigin="anonymous" />
-            <div class="mapLayer" id="cleanMapLayer"></div>
+          <div class="mapWrap" id="washMapWrap">
+            <img class="mapImg" src="/admin/kart.png" alt="Vaskekart" />
+            <div class="mapLayer" id="washMapLayer"></div>
           </div>
 
-          <div style="height:12px"></div>
+          <div class="formActions" style="margin-top:10px">
+            <button class="btn btnGhost" type="button" id="printWashBtn">Print ut vaske plan</button>
+          </div>
 
-          <div class="cardHead" style="margin-bottom:10px">
-            <h2>Enheter som skal vaskes</h2>
-            <div class="hint"></div>
+          <div class="cardHead" style="margin-top:12px">
+            <h2 style="font-size:13px; font-weight:900; margin:0">Enheter som skal vaskes</h2>
+            <div class="hint">Liste</div>
           </div>
 
           <div class="tableWrap">
-            <table style="min-width:720px">
+            <table style="min-width: 720px">
               <thead>
                 <tr>
                   <th>Enhet</th>
                   <th>Årsak</th>
-                  <th>Info</th>
+                  <th>Dato</th>
                 </tr>
               </thead>
-              <tbody id="cleanBody"></tbody>
+              <tbody id="washTbody"></tbody>
             </table>
           </div>
+        </div>
 
-          <div class="printRow">
-            <button class="btn" id="printCleanBtn" type="button">Print ut vaske plan</button>
-            <span class="muted" id="printHint"></span>
+        <div class="card" id="requestCard">
+          <div class="cardHead">
+            <h2>Forespør booking</h2>
+            <div class="hint">Sendes til admin</div>
+          </div>
+
+          <p class="muted">Du kan legge inn flere linjer. Admin godkjenner eller avslår per linje.</p>
+
+          <form id="reqForm">
+            <div class="formGrid">
+              <div>
+                <label>E-post</label>
+                <input id="reqEmail" type="email" />
+              </div>
+              <div>
+                <label>Telefon</label>
+                <input id="reqPhone" type="tel" />
+              </div>
+            </div>
+
+            <div style="margin-top:12px" class="tableWrap">
+              <table class="reqTable">
+                <thead>
+                  <tr>
+                    <th>Innflytting</th>
+                    <th>Utflytting</th>
+                    <th>Enhet</th>
+                    <th>Firma</th>
+                    <th>Leietaker</th>
+                    <th>Kommentar</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="reqLinesTbody"></tbody>
+              </table>
+            </div>
+
+            <div class="formActions">
+              <button class="btn" type="button" id="addReqLineBtn">Legg til linje</button>
+              <button class="btn btnPrimary" type="submit">Send forespørsel</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card" id="adminRequestsCard">
+          <div class="cardHead">
+            <h2>Forespurte bookinger</h2>
+            <div class="hint">Kun admin</div>
+          </div>
+
+          <div class="tableWrap">
+            <table class="reqTable">
+              <thead>
+                <tr>
+                  <th>Forespørsel</th>
+                  <th>Kontakt</th>
+                  <th>Enhet</th>
+                  <th>Periode</th>
+                  <th>Firma</th>
+                  <th>Leietaker</th>
+                  <th>Kommentar</th>
+                  <th>Status</th>
+                  <th>Handling</th>
+                </tr>
+              </thead>
+              <tbody id="adminReqTbody"></tbody>
+            </table>
           </div>
         </div>
+
       </div>
     </div>
 
     <script>
       const elMsg = document.getElementById("msg")
       const elTbody = document.getElementById("tbody")
-      const elUnitSelect = document.getElementById("unitId")
       const elWho = document.getElementById("who")
       const elMapLayer = document.getElementById("mapLayer")
-      const elCreateCard = document.getElementById("createCard")
-      const elThActions = document.getElementById("thActions")
-      const elAccessHint = document.getElementById("accessHint")
 
-      const elCleanMeta = document.getElementById("cleanMeta")
-      const elCleanBody = document.getElementById("cleanBody")
-      const elCleanMapLayer = document.getElementById("cleanMapLayer")
-      const elCleanMapTitle = document.getElementById("cleanMapTitle")
-      const elPrintBtn = document.getElementById("printCleanBtn")
-      const elPrintHint = document.getElementById("printHint")
+      const elBookingCard = document.getElementById("bookingCard")
+      const elWashTitle = document.getElementById("washTitle")
+      const elWashKpi = document.getElementById("washKpi")
+      const elWashTbody = document.getElementById("washTbody")
+      const elWashMapLayer = document.getElementById("washMapLayer")
 
-      let IS_ADMIN = false
+      const elRequestCard = document.getElementById("requestCard")
+      const elAdminRequestsCard = document.getElementById("adminRequestsCard")
+      const elAdminReqTbody = document.getElementById("adminReqTbody")
+      const elReqBadge = document.getElementById("reqBadge")
 
-      let LAST_CLEAN = {
-        startIso: "",
-        endIso: "",
-        floor: 0,
-        movedExtra: 0,
-        cleanDateIso: "",
-        items: [],
-        moveOutSet: new Set()
-      }
+      const elUnitSelect = document.getElementById("unitId")
+      const elCheckin = document.getElementById("checkinDate")
+      const elCheckout = document.getElementById("checkoutDate")
 
-      const CLEANING_CFG = {
-        weekday: 1,
-        hour: 8,
-        minute: 0,
-        floor1On: "odd"
-      }
+      const elReqEmail = document.getElementById("reqEmail")
+      const elReqPhone = document.getElementById("reqPhone")
+      const elReqLinesTbody = document.getElementById("reqLinesTbody")
+
+      let isAdmin = false
+      let unitRows = []
+
+      const CLEAN_WEEKDAY = 1
+      const BASE_WASHDAY_ISO = "2026-01-26"
+      const BASE_FLOOR = 1
 
       function setMsg(t) {
         if (!t) {
@@ -556,20 +669,6 @@
         }
         elMsg.textContent = t
         elMsg.style.display = "block"
-      }
-
-      function isoToday() {
-        const d = new Date()
-        const mm = String(d.getMonth() + 1).padStart(2, "0")
-        const dd = String(d.getDate()).padStart(2, "0")
-        return d.getFullYear() + "-" + mm + "-" + dd
-      }
-
-      function toIsoDateLocal(d) {
-        const y = d.getFullYear()
-        const m = String(d.getMonth() + 1).padStart(2, "0")
-        const day = String(d.getDate()).padStart(2, "0")
-        return y + "-" + m + "-" + day
       }
 
       function fmtDate(s) {
@@ -589,10 +688,35 @@
         return aa + " til " + bb
       }
 
+      function parseIsoDate(s) {
+        if (!s || typeof s !== "string") return null
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null
+        return new Date(s + "T00:00:00")
+      }
+
+      function dateToIso(d) {
+        const y = d.getFullYear()
+        const m = String(d.getMonth() + 1).padStart(2, "0")
+        const dd = String(d.getDate()).padStart(2, "0")
+        return y + "-" + m + "-" + dd
+      }
+
+      function isoToday() {
+        return dateToIso(new Date())
+      }
+
+      function addDaysIso(iso, days) {
+        const d = parseIsoDate(iso)
+        if (!d) return iso
+        d.setDate(d.getDate() + days)
+        return dateToIso(d)
+      }
+
       function daysBetween(a, b) {
         if (!a || !b) return ""
-        const da = new Date(a)
-        const db = new Date(b)
+        const da = parseIsoDate(a)
+        const db = parseIsoDate(b)
+        if (!da || !db) return ""
         const diff = Math.round((db - da) / (1000 * 60 * 60 * 24))
         return Number.isFinite(diff) ? diff : ""
       }
@@ -619,12 +743,46 @@
         return up
       }
 
+      function overlaps(aStart, aEnd, bStart, bEnd) {
+        const as = parseIsoDate(aStart)
+        const ae = parseIsoDate(aEnd)
+        const bs = parseIsoDate(bStart)
+        const be = parseIsoDate(bEnd)
+        if (!as || !ae || !bs || !be) return false
+        return as < be && ae > bs
+      }
+
+      function unitBookings(row) {
+        const list = []
+        if (row.current_checkin_date && row.current_checkout_date) {
+          list.push({ checkin_date: row.current_checkin_date, checkout_date: row.current_checkout_date })
+        }
+        const up = getUpcoming(row)
+        for (const b of up) {
+          if (b && b.checkin_date && b.checkout_date) list.push({ checkin_date: b.checkin_date, checkout_date: b.checkout_date })
+        }
+        return list
+      }
+
+      function unitIsFree(row, checkin, checkout) {
+        if (!checkin || !checkout) return true
+        const bookings = unitBookings(row)
+        for (const b of bookings) {
+          if (overlaps(b.checkin_date, b.checkout_date, checkin, checkout)) return false
+        }
+        return true
+      }
+
+      function availableUnits(checkin, checkout) {
+        return unitRows.filter(r => unitIsFree(r, checkin, checkout))
+      }
+
       function unitColorClass(row) {
         const today = isoToday()
         if (row.current_booking_id) return "unitRed"
 
         const up = getUpcoming(row)
-        const nextStart = up[0] ? up[0].checkin_date : null
+        const nextStart = row.next_checkin_date || (up[0] ? up[0].checkin_date : null)
 
         if (nextStart) {
           if (today < nextStart) return "unitYellow"
@@ -657,14 +815,12 @@
       function upcomingCell(row) {
         const td = document.createElement("td")
         const up = getUpcoming(row)
-
         if (up.length === 0) {
           td.textContent = ""
           return td
         }
 
         const wrap = document.createElement("div")
-
         for (const b of up) {
           const line = document.createElement("div")
           line.className = "upLine"
@@ -673,9 +829,10 @@
           txt.className = "upText"
           const who = (b.company || b.tenant_name) ? (" " + (b.company || b.tenant_name)) : ""
           txt.textContent = fmtRange(b.checkin_date || "", b.checkout_date || "") + who
+
           line.appendChild(txt)
 
-          if (IS_ADMIN) {
+          if (isAdmin) {
             const del = document.createElement("button")
             del.type = "button"
             del.className = "btn btnSmall btnDanger"
@@ -736,30 +893,20 @@
 
         tr.appendChild(upcomingCell(row))
 
-        if (IS_ADMIN) {
-          const tdActions = document.createElement("td")
-          if (row.current_booking_id) {
-            const btn = document.createElement("button")
-            btn.type = "button"
-            btn.className = "btn btnSmall btnDanger"
-            btn.textContent = "Slett aktiv"
-            btn.addEventListener("click", () => deleteBooking(Number(row.current_booking_id)))
-            tdActions.appendChild(btn)
-          }
-          tr.appendChild(tdActions)
+        const tdActions = document.createElement("td")
+        if (isAdmin && row.current_booking_id) {
+          const btn = document.createElement("button")
+          btn.type = "button"
+          btn.className = "btn btnSmall btnDanger"
+          btn.textContent = "Slett aktiv"
+          btn.addEventListener("click", () => deleteBooking(Number(row.current_booking_id)))
+          tdActions.appendChild(btn)
+        } else {
+          tdActions.textContent = ""
         }
+        tr.appendChild(tdActions)
 
         elTbody.appendChild(tr)
-      }
-
-      function fillUnitSelect(rows) {
-        elUnitSelect.innerHTML = '<option value="">Velg</option>'
-        for (const r of rows) {
-          const opt = document.createElement("option")
-          opt.value = r.unit_id
-          opt.textContent = r.unit_code
-          elUnitSelect.appendChild(opt)
-        }
       }
 
       const ROW_1ETG_TOP = [101,103,105,107,109,111,113,115,117,119,121]
@@ -767,55 +914,30 @@
       const ROW_2ETG_TOP = [201,203,205,207,209,211,213,215,217,219,221]
       const ROW_2ETG_BOT = [202,204,206,208,210,212,214,216,218,220,222]
 
-      const FLOOR1 = [...ROW_1ETG_TOP, ...ROW_1ETG_BOT].map(String).sort((a,b)=>Number(a)-Number(b))
-      const FLOOR2 = [...ROW_2ETG_TOP, ...ROW_2ETG_BOT].map(String).sort((a,b)=>Number(a)-Number(b))
-
       const UNIT_POS = {
-        "101": { x: 38.55, y: 56.15 },
-        "102": { x: 38.55, y: 70.77 },
-        "103": { x: 43.09, y: 55.75 },
-        "104": { x: 43.27, y: 70.64 },
-        "105": { x: 47.73, y: 56.01 },
-        "106": { x: 47.64, y: 70.77 },
-        "107": { x: 52.91, y: 56.15 },
-        "108": { x: 52.82, y: 70.77 },
-        "109": { x: 58.00, y: 56.01 },
-        "110": { x: 57.73, y: 70.64 },
-        "111": { x: 63.18, y: 56.15 },
-        "112": { x: 63.18, y: 70.77 },
-        "113": { x: 67.82, y: 56.28 },
-        "114": { x: 68.00, y: 71.04 },
-        "115": { x: 73.09, y: 56.28 },
-        "116": { x: 73.00, y: 71.04 },
-        "117": { x: 78.55, y: 56.15 },
-        "118": { x: 78.36, y: 71.04 },
-        "119": { x: 84.18, y: 56.01 },
-        "120": { x: 84.18, y: 70.77 },
-        "121": { x: 90.27, y: 56.55 },
-        "122": { x: 90.18, y: 70.90 },
+        "101": { x: 38.55, y: 56.15 }, "102": { x: 38.55, y: 70.77 },
+        "103": { x: 43.09, y: 55.75 }, "104": { x: 43.27, y: 70.64 },
+        "105": { x: 47.73, y: 56.01 }, "106": { x: 47.64, y: 70.77 },
+        "107": { x: 52.91, y: 56.15 }, "108": { x: 52.82, y: 70.77 },
+        "109": { x: 58.00, y: 56.01 }, "110": { x: 57.73, y: 70.64 },
+        "111": { x: 63.18, y: 56.15 }, "112": { x: 63.18, y: 70.77 },
+        "113": { x: 67.82, y: 56.28 }, "114": { x: 68.00, y: 71.04 },
+        "115": { x: 73.09, y: 56.28 }, "116": { x: 73.00, y: 71.04 },
+        "117": { x: 78.55, y: 56.15 }, "118": { x: 78.36, y: 71.04 },
+        "119": { x: 84.18, y: 56.01 }, "120": { x: 84.18, y: 70.77 },
+        "121": { x: 90.27, y: 56.55 }, "122": { x: 90.18, y: 70.90 },
 
-        "201": { x: 37.82, y: 9.61 },
-        "202": { x: 37.64, y: 24.10 },
-        "203": { x: 42.27, y: 9.74 },
-        "204": { x: 42.64, y: 24.10 },
-        "205": { x: 47.00, y: 9.88 },
-        "206": { x: 47.00, y: 23.97 },
-        "207": { x: 52.27, y: 10.01 },
-        "208": { x: 52.00, y: 23.97 },
-        "209": { x: 57.27, y: 9.88 },
-        "210": { x: 57.18, y: 24.10 },
-        "211": { x: 62.36, y: 9.88 },
-        "212": { x: 62.00, y: 24.10 },
-        "213": { x: 67.00, y: 9.61 },
-        "214": { x: 67.27, y: 24.50 },
-        "215": { x: 72.36, y: 9.74 },
-        "216": { x: 72.09, y: 24.24 },
-        "217": { x: 77.73, y: 9.74 },
-        "218": { x: 77.45, y: 24.63 },
-        "219": { x: 83.73, y: 9.88 },
-        "220": { x: 83.27, y: 24.37 },
-        "221": { x: 89.27, y: 9.74 },
-        "222": { x: 89.36, y: 24.50 }
+        "201": { x: 37.82, y: 9.61 },  "202": { x: 37.64, y: 24.10 },
+        "203": { x: 42.27, y: 9.74 },  "204": { x: 42.64, y: 24.10 },
+        "205": { x: 47.00, y: 9.88 },  "206": { x: 47.00, y: 23.97 },
+        "207": { x: 52.27, y: 10.01 }, "208": { x: 52.00, y: 23.97 },
+        "209": { x: 57.27, y: 9.88 },  "210": { x: 57.18, y: 24.10 },
+        "211": { x: 62.36, y: 9.88 },  "212": { x: 62.00, y: 24.10 },
+        "213": { x: 67.00, y: 9.61 },  "214": { x: 67.27, y: 24.50 },
+        "215": { x: 72.36, y: 9.74 },  "216": { x: 72.09, y: 24.24 },
+        "217": { x: 77.73, y: 9.74 },  "218": { x: 77.45, y: 24.63 },
+        "219": { x: 83.73, y: 9.88 },  "220": { x: 83.27, y: 24.37 },
+        "221": { x: 89.27, y: 9.74 },  "222": { x: 89.36, y: 24.50 }
       }
 
       function avg(nums) {
@@ -863,19 +985,15 @@
         xWalls.push(xCenters[cols - 1] + (xCenters[cols - 1] - xCenters[cols - 2]) / 2)
 
         const rects = {}
-
         for (let i = 0; i < cols; i++) {
           const left = xWalls[i]
           const right = xWalls[i + 1]
           const w = right - left
-
           const ct = rowTop[i]
           const cb = rowBot[i]
-
           if (ct != null) rects[String(ct)] = { left, top: yTopOuter, width: w, height: (yMid - yTopOuter) }
           if (cb != null) rects[String(cb)] = { left, top: yMid, width: w, height: (yBotOuter - yMid) }
         }
-
         return rects
       }
 
@@ -922,7 +1040,7 @@
             if (r.current_checkout_date) lines.push("Ut: " + fmtDate(r.current_checkout_date))
 
             const up = getUpcoming(r)
-            if (!r.current_booking_id && up.length > 0) {
+            if (up.length > 0) {
               lines.push("Kommende:")
               for (let i = 0; i < Math.min(6, up.length); i++) {
                 const b = up[i]
@@ -938,266 +1056,205 @@
         }
       }
 
-      function renderCleaningMap(cleanSet, moveOutSet) {
-        elCleanMapLayer.innerHTML = ""
-        const codes = Array.from(cleanSet || []).map(String)
+      function nextOrSameWeekday(fromDate, weekday) {
+        const d = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate())
+        const cur = d.getDay()
+        const delta = (weekday - cur + 7) % 7
+        d.setDate(d.getDate() + delta)
+        return d
+      }
 
-        for (const code of codes) {
+      function weeksBetweenIso(aIso, bIso) {
+        const a = parseIsoDate(aIso)
+        const b = parseIsoDate(bIso)
+        if (!a || !b) return 0
+        const diff = Math.round((b - a) / (1000 * 60 * 60 * 24))
+        return Math.floor(diff / 7)
+      }
+
+      function floorThisWeek(washDayIso) {
+        const w = weeksBetweenIso(BASE_WASHDAY_ISO, washDayIso)
+        const parity = ((w % 2) + 2) % 2
+        return parity === 0 ? BASE_FLOOR : (BASE_FLOOR === 1 ? 2 : 1)
+      }
+
+      function plannedUnitsForFloor(floor) {
+        const out = []
+        if (floor === 1) {
+          for (let i = 101; i <= 122; i++) out.push(String(i))
+        } else {
+          for (let i = 201; i <= 222; i++) out.push(String(i))
+        }
+        return out
+      }
+
+      function collectMoveOutUnits(rows, periodStartIso, periodEndIso) {
+        const s = new Set()
+        for (const r of rows) {
+          const code = String(r.unit_code || "")
+          const dates = []
+          if (r.current_checkout_date) dates.push(r.current_checkout_date)
+          const up = getUpcoming(r)
+          for (const b of up) {
+            if (b && b.checkout_date) dates.push(b.checkout_date)
+          }
+          for (const d of dates) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(String(d))) continue
+            if (String(d) > periodStartIso && String(d) <= periodEndIso) s.add(code)
+          }
+        }
+        return s
+      }
+
+      function renderWash(rows) {
+        const today = new Date()
+        const washDay = nextOrSameWeekday(today, CLEAN_WEEKDAY)
+        const washDayIso = dateToIso(washDay)
+        const periodStartIso = addDaysIso(washDayIso, -7)
+
+        const floor = floorThisWeek(washDayIso)
+        const planned = new Set(plannedUnitsForFloor(floor))
+        const moveouts = collectMoveOutUnits(rows, periodStartIso, washDayIso)
+
+        const clean = new Set()
+        for (const u of planned) clean.add(u)
+        for (const u of moveouts) clean.add(u)
+
+        let extra = 0
+        for (const u of moveouts) if (!planned.has(u)) extra++
+
+        elWashTitle.textContent = "Vasking foregår " + fmtDate(washDayIso)
+        elWashKpi.textContent =
+          "Periode for utflytt-vask: " + fmtDate(periodStartIso) +
+          " til " + fmtDate(washDayIso) +
+          ". Etasje denne uka: " + floor +
+          ". Ekstra utflytt-vask: " + extra + "."
+
+        const list = Array.from(clean).sort((a,b) => a.localeCompare(b, "nb"))
+
+        elWashTbody.innerHTML = ""
+        for (const code of list) {
+          const tr = document.createElement("tr")
+
+          const tdA = document.createElement("td")
+          tdA.textContent = code
+          tr.appendChild(tdA)
+
+          const tdB = document.createElement("td")
+          const isMoveOut = moveouts.has(code) && !planned.has(code)
+          tdB.textContent = planned.has(code) ? (isMoveOut ? "Etasje, utflytting" : "Etasje") : "Utflytting"
+          tr.appendChild(tdB)
+
+          const tdC = document.createElement("td")
+          tdC.textContent = moveouts.has(code) ? fmtDate(washDayIso) : fmtDate(washDayIso)
+          tr.appendChild(tdC)
+
+          elWashTbody.appendChild(tr)
+        }
+
+        elWashMapLayer.innerHTML = ""
+        for (const r of rows) {
+          const code = String(r.unit_code || "")
           const raw = UNIT_RECT[code]
           if (!raw) continue
           const rect = clampRect(raw)
 
           const box = document.createElement("div")
-          box.className = "unitBox unitBlue"
+          box.className = "washBox" + (clean.has(code) ? " washBlue" : "")
 
           box.style.left = rect.left.toFixed(4) + "%"
           box.style.top = rect.top.toFixed(4) + "%"
           box.style.width = rect.width.toFixed(4) + "%"
           box.style.height = rect.height.toFixed(4) + "%"
 
-          const isMoveOut = moveOutSet && moveOutSet.has(String(code))
-          box.title = isMoveOut ? ("Skal vaskes (utflytting): " + code) : ("Skal vaskes: " + code)
-
-          if (isMoveOut) {
+          if (clean.has(code) && moveouts.has(code) && !planned.has(code)) {
             const tag = document.createElement("div")
-            tag.className = "unitTag"
+            tag.className = "washTag"
             tag.textContent = "utflytting"
             box.appendChild(tag)
           }
 
-          elCleanMapLayer.appendChild(box)
+          elWashMapLayer.appendChild(box)
         }
+
+        return { washDayIso, periodStartIso, floor, list, moveouts, planned }
       }
 
-      function isoWeekNumber(d) {
-        const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
-        const dayNum = date.getUTCDay() || 7
-        date.setUTCDate(date.getUTCDate() + 4 - dayNum)
-        const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
-        return Math.ceil((((date - yearStart) / 86400000) + 1) / 7)
+      function canUsePdfLibs() {
+        return typeof html2canvas === "function" && window.jspdf && window.jspdf.jsPDF
       }
 
-      function nextCleaningDate(now) {
-        const wd = CLEANING_CFG.weekday
-        const h = CLEANING_CFG.hour
-        const m = CLEANING_CFG.minute
-
-        const candidate = new Date(now)
-        candidate.setHours(h, m, 0, 0)
-
-        let addDays = (wd - now.getDay() + 7) % 7
-        if (addDays === 0 && now.getTime() >= candidate.getTime()) addDays = 7
-
-        const next = new Date(now)
-        next.setDate(now.getDate() + addDays)
-        next.setHours(h, m, 0, 0)
-        return next
-      }
-
-      function floorForCleaning(d) {
-        const w = isoWeekNumber(d)
-        const odd = (w % 2) === 1
-        if (CLEANING_CFG.floor1On === "odd") return odd ? 1 : 2
-        return odd ? 2 : 1
-      }
-
-      async function loadCleaningPlan() {
-        const now = new Date()
-        const next = nextCleaningDate(now)
-        const prev = new Date(next.getTime() - 7 * 24 * 60 * 60 * 1000)
-
-        const floor = floorForCleaning(next)
-        const floorUnits = floor === 1 ? FLOOR1 : FLOOR2
-
-        const startIso = toIsoDateLocal(prev)
-        const endIso = toIsoDateLocal(next)
-
-        elCleanMapTitle.textContent = "Vasking foregår " + fmtDate(endIso)
-
-        let moved = []
+      async function printWashPlan() {
         try {
-          const headers = await authHeaders()
-          const res = await fetch("/.netlify/functions/cleaning-plan?start=" + startIso + "&end=" + endIso, { headers })
-          if (res.ok) moved = await res.json()
-        } catch {}
-
-        const movedMap = new Map()
-        for (const r of (Array.isArray(moved) ? moved : [])) {
-          const code = String(r.unit_code || "")
-          if (!code) continue
-          if (!movedMap.has(code)) movedMap.set(code, r)
-        }
-
-        const moveOutSet = new Set(Array.from(movedMap.keys()).map(String))
-
-        const plan = new Map()
-        for (const code of floorUnits) {
-          plan.set(code, { code, reason: "Ukevask " + floor + ". etg", info: "" })
-        }
-
-        let movedExtra = 0
-        for (const [code, r] of movedMap.entries()) {
-          const who = (r.company || r.tenant_name) ? (" " + (r.company || r.tenant_name)) : ""
-          const info = "Utflytting: " + fmtDate(r.checkout_date || "") + who
-
-          if (plan.has(code)) {
-            const cur = plan.get(code)
-            cur.info = cur.info ? (cur.info + ". " + info) : info
-          } else {
-            movedExtra += 1
-            plan.set(code, { code, reason: "Utflytt-vask", info })
+          if (!canUsePdfLibs()) {
+            setMsg("Fant ikke PDF-bibliotek. Oppdater siden.")
+            return
           }
-        }
 
-        elCleanMeta.textContent =
-          "Periode for utflytt-vask: " + fmtDate(startIso) + " til " + fmtDate(endIso) +
-          ". Etasje denne uka: " + floor + ". Ekstra utflytt-vask: " + movedExtra + "."
+          const mapEl = document.getElementById("washMapWrap")
+          const kpi = elWashKpi.textContent || ""
+          const rows = []
+          for (const tr of elWashTbody.querySelectorAll("tr")) {
+            const tds = tr.querySelectorAll("td")
+            rows.push({
+              unit: (tds[0] && tds[0].textContent) ? tds[0].textContent.trim() : "",
+              reason: (tds[1] && tds[1].textContent) ? tds[1].textContent.trim() : "",
+              date: (tds[2] && tds[2].textContent) ? tds[2].textContent.trim() : ""
+            })
+          }
 
-        elCleanBody.innerHTML = ""
-        const items = Array.from(plan.values()).sort((a, b) => Number(a.code) - Number(b.code))
-
-        for (const it of items) {
-          const tr = document.createElement("tr")
-
-          const tdA = document.createElement("td")
-          tdA.textContent = it.code
-          tr.appendChild(tdA)
-
-          const tdB = document.createElement("td")
-          tdB.textContent = it.reason
-          tr.appendChild(tdB)
-
-          const tdC = document.createElement("td")
-          tdC.textContent = it.info || ""
-          tr.appendChild(tdC)
-
-          elCleanBody.appendChild(tr)
-        }
-
-        const cleanSet = new Set(items.map(x => String(x.code)))
-        renderCleaningMap(cleanSet, moveOutSet)
-
-        LAST_CLEAN = {
-          startIso,
-          endIso,
-          floor,
-          movedExtra,
-          cleanDateIso: endIso,
-          items,
-          moveOutSet
-        }
-
-        elPrintHint.textContent = ""
-      }
-
-      async function printCleaningPlanPdf() {
-        try {
-          elPrintHint.textContent = ""
-          elPrintBtn.disabled = true
-          elPrintBtn.textContent = "Lager PDF"
-
-          const wrap = document.getElementById("cleanMapWrap")
-          const canvas = await window.html2canvas(wrap, {
-            scale: 2,
-            backgroundColor: "#ffffff",
-            useCORS: true
-          })
+          const canvas = await html2canvas(mapEl, { scale: 2, useCORS: true, backgroundColor: "#ffffff" })
           const imgData = canvas.toDataURL("image/png")
 
-          const jspdf = window.jspdf
-          const doc = new jspdf.jsPDF({ unit: "pt", format: "a4" })
+          const { jsPDF } = window.jspdf
+          const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" })
 
           const pageW = doc.internal.pageSize.getWidth()
           const pageH = doc.internal.pageSize.getHeight()
           const margin = 40
 
           let y = margin
-
           doc.setFont("helvetica", "bold")
-          doc.setFontSize(16)
+          doc.setFontSize(14)
           doc.text("Vaskeplan", margin, y)
           y += 18
 
           doc.setFont("helvetica", "normal")
-          doc.setFontSize(11)
-          const meta1 = "Vasking foregår " + fmtDate(LAST_CLEAN.cleanDateIso)
-          const meta2 = "Periode for utflytt-vask: " + fmtDate(LAST_CLEAN.startIso) + " til " + fmtDate(LAST_CLEAN.endIso)
-          const meta3 = "Etasje denne uka: " + String(LAST_CLEAN.floor) + ". Ekstra utflytt-vask: " + String(LAST_CLEAN.movedExtra) + "."
-
-          y = addWrappedText(doc, meta1, margin, y, pageW - margin * 2, 13)
-          y = addWrappedText(doc, meta2, margin, y, pageW - margin * 2, 13)
-          y = addWrappedText(doc, meta3, margin, y, pageW - margin * 2, 13)
-          y += 8
+          doc.setFontSize(10)
+          const kpiLines = doc.splitTextToSize(kpi, pageW - margin * 2)
+          doc.text(kpiLines, margin, y)
+          y += (kpiLines.length * 12) + 12
 
           const imgMaxW = pageW - margin * 2
+          const imgMaxH = 260
           const imgW = imgMaxW
-          const imgH = imgW * (canvas.height / canvas.width)
-
-          if (y + imgH > pageH - margin) {
-            doc.addPage()
-            y = margin
-          }
-
-          doc.setDrawColor(229, 231, 235)
-          doc.setLineWidth(1)
-          doc.rect(margin, y, imgW, imgH)
+          const imgH = Math.min(imgMaxH, (canvas.height / canvas.width) * imgW)
           doc.addImage(imgData, "PNG", margin, y, imgW, imgH)
-          y += imgH + 16
-
-          if (y > pageH - margin - 60) {
-            doc.addPage()
-            y = margin
-          }
+          y += imgH + 18
 
           doc.setFont("helvetica", "bold")
-          doc.setFontSize(12)
+          doc.setFontSize(11)
           doc.text("Enheter som skal vaskes", margin, y)
           y += 14
 
           doc.setFont("helvetica", "normal")
           doc.setFontSize(10)
 
-          const rows = Array.isArray(LAST_CLEAN.items) ? LAST_CLEAN.items : []
-          for (const it of rows) {
-            if (y > pageH - margin - 40) {
+          const lineH = 12
+          for (const r of rows) {
+            const line = (r.unit ? r.unit : "") + "  " + (r.reason ? r.reason : "")
+            if (y > pageH - margin) {
               doc.addPage()
               y = margin
             }
-
-            const code = String(it.code || "")
-            const moveOut = LAST_CLEAN.moveOutSet && LAST_CLEAN.moveOutSet.has(code)
-            const reason = String(it.reason || "")
-            const info = String(it.info || "")
-            const line1 = code + "  " + reason + (moveOut ? " (utflytting)" : "")
-            y = addWrappedText(doc, line1, margin, y, pageW - margin * 2, 12)
-
-            if (info) {
-              y = addWrappedText(doc, "Info: " + info, margin + 12, y, pageW - margin * 2 - 12, 12)
-            }
-
-            y += 6
+            doc.text(line, margin, y)
+            y += lineH
           }
 
-          const filename =
-            "vaskeplan_" + fmtDate(LAST_CLEAN.cleanDateIso).split("-").reverse().join("") + ".pdf"
-
-          doc.save(filename)
-          elPrintHint.textContent = "PDF lastet ned"
-        } catch (e) {
-          elPrintHint.textContent = "Klarte ikke å lage PDF"
-        } finally {
-          elPrintBtn.disabled = false
-          elPrintBtn.textContent = "Print ut vaske plan"
+          doc.save("vaskeplan.pdf")
+        } catch {
+          setMsg("Klarte ikke å lage PDF")
         }
-      }
-
-      function addWrappedText(doc, text, x, y, maxW, lineH) {
-        const parts = doc.splitTextToSize(String(text || ""), maxW)
-        for (const p of parts) {
-          doc.text(p, x, y)
-          y += lineH
-        }
-        return y
       }
 
       let identityReadyResolve
@@ -1212,21 +1269,35 @@
         return { ...extra, Authorization: "Bearer " + token }
       }
 
-      function computeIsAdmin(user) {
-        const rolesRaw = user?.app_metadata?.roles || []
-        const roles = Array.isArray(rolesRaw) ? rolesRaw.map(r => String(r).toLowerCase()) : []
-        return roles.includes("admin")
+      function applyRoleUi() {
+        elBookingCard.style.display = isAdmin ? "block" : "none"
+        elAdminRequestsCard.style.display = isAdmin ? "block" : "none"
+        elRequestCard.style.display = isAdmin ? "none" : "block"
       }
 
-      function applyAccessUI() {
-        if (IS_ADMIN) {
-          elAccessHint.textContent = "Admin"
-          elCreateCard.style.display = "block"
-          elThActions.style.display = ""
-        } else {
-          elAccessHint.textContent = "Lesetilgang"
-          elCreateCard.style.display = "none"
-          elThActions.style.display = "none"
+      function fillAdminUnitSelect(checkin, checkout) {
+        const list = (checkin && checkout) ? availableUnits(checkin, checkout) : unitRows
+        elUnitSelect.innerHTML = ""
+        if (!checkin || !checkout) {
+          elUnitSelect.disabled = true
+          const opt = document.createElement("option")
+          opt.value = ""
+          opt.textContent = "Velg datoer først"
+          elUnitSelect.appendChild(opt)
+          return
+        }
+
+        elUnitSelect.disabled = false
+        const opt0 = document.createElement("option")
+        opt0.value = ""
+        opt0.textContent = "Velg"
+        elUnitSelect.appendChild(opt0)
+
+        for (const r of list) {
+          const opt = document.createElement("option")
+          opt.value = r.unit_id
+          opt.textContent = r.unit_code
+          elUnitSelect.appendChild(opt)
         }
       }
 
@@ -1250,15 +1321,17 @@
           }
 
           const rows = await res.json()
-          const list = Array.isArray(rows) ? rows : []
+          unitRows = Array.isArray(rows) ? rows : []
 
           setMsg("")
           clearTable()
-          fillUnitSelect(list)
-          renderMap(list)
-          for (const rr of list) addRow(rr)
+          renderMap(unitRows)
+          for (const rr of unitRows) addRow(rr)
 
-          await loadCleaningPlan()
+          renderWash(unitRows)
+          fillAdminUnitSelect(elCheckin.value, elCheckout.value)
+
+          if (isAdmin) await loadBookingRequests()
         } catch {
           setMsg("Klarte ikke å hente data")
         }
@@ -1266,21 +1339,24 @@
 
       async function createBooking(e) {
         e.preventDefault()
-        if (!IS_ADMIN) {
-          setMsg("Du har ikke rettigheter til å opprette booking")
+        setMsg("")
+
+        if (!isAdmin) {
+          setMsg("Ingen tilgang")
           return
         }
 
-        setMsg("")
+        const checkinDate = elCheckin.value
+        const checkoutDate = elCheckout.value
+        const unitId = elUnitSelect.value
 
-        const unitId = document.getElementById("unitId").value
         const tenantName = document.getElementById("tenantName").value
         const company = document.getElementById("company").value
-        const checkinDate = document.getElementById("checkinDate").value
-        const checkoutDate = document.getElementById("checkoutDate").value
+        const tenantEmail = document.getElementById("tenantEmail").value
+        const tenantPhone = document.getElementById("tenantPhone").value
 
         if (!unitId || !checkinDate || !checkoutDate) {
-          setMsg("Fyll inn enhet og datoer")
+          setMsg("Fyll inn datoer og enhet")
           return
         }
 
@@ -1301,6 +1377,8 @@
               unit_id: Number(unitId),
               tenant_name: tenantName,
               company: company,
+              email: tenantEmail,
+              phone: tenantPhone,
               checkin_date: checkinDate,
               checkout_date: checkoutDate
             })
@@ -1326,8 +1404,11 @@
           setMsg("Booking opprettet")
           document.getElementById("tenantName").value = ""
           document.getElementById("company").value = ""
-          document.getElementById("checkinDate").value = ""
-          document.getElementById("checkoutDate").value = ""
+          document.getElementById("tenantEmail").value = ""
+          document.getElementById("tenantPhone").value = ""
+          elCheckin.value = ""
+          elCheckout.value = ""
+          fillAdminUnitSelect("", "")
 
           await loadUnits()
         } catch {
@@ -1336,8 +1417,8 @@
       }
 
       async function deleteBooking(bookingId) {
-        if (!IS_ADMIN) {
-          setMsg("Du har ikke rettigheter til å slette booking")
+        if (!isAdmin) {
+          setMsg("Ingen tilgang")
           return
         }
 
@@ -1378,6 +1459,397 @@
         }
       }
 
+      function uid() {
+        return Math.random().toString(16).slice(2) + Date.now().toString(16)
+      }
+
+      let reqLines = []
+
+      function newReqLine() {
+        return {
+          _id: uid(),
+          checkin_date: "",
+          checkout_date: "",
+          unit_id: "",
+          company: "",
+          tenant_name: "",
+          comment: ""
+        }
+      }
+
+      function renderReqLines() {
+        elReqLinesTbody.innerHTML = ""
+
+        for (const line of reqLines) {
+          const tr = document.createElement("tr")
+
+          const tdIn = document.createElement("td")
+          const inEl = document.createElement("input")
+          inEl.type = "date"
+          inEl.value = line.checkin_date || ""
+          inEl.addEventListener("change", () => {
+            line.checkin_date = inEl.value
+            if (line.unit_id && !isUnitIdAvailableForLine(line.unit_id, line.checkin_date, line.checkout_date)) {
+              line.unit_id = ""
+            }
+            renderReqLines()
+          })
+          tdIn.appendChild(inEl)
+          tr.appendChild(tdIn)
+
+          const tdOut = document.createElement("td")
+          const outEl = document.createElement("input")
+          outEl.type = "date"
+          outEl.value = line.checkout_date || ""
+          outEl.addEventListener("change", () => {
+            line.checkout_date = outEl.value
+            if (line.unit_id && !isUnitIdAvailableForLine(line.unit_id, line.checkin_date, line.checkout_date)) {
+              line.unit_id = ""
+            }
+            renderReqLines()
+          })
+          tdOut.appendChild(outEl)
+          tr.appendChild(tdOut)
+
+          const tdUnit = document.createElement("td")
+          const sel = document.createElement("select")
+
+          const ready = line.checkin_date && line.checkout_date
+          sel.disabled = !ready
+
+          if (!ready) {
+            const opt = document.createElement("option")
+            opt.value = ""
+            opt.textContent = "Velg datoer først"
+            sel.appendChild(opt)
+          } else {
+            const opt0 = document.createElement("option")
+            opt0.value = ""
+            opt0.textContent = "Velg"
+            sel.appendChild(opt0)
+
+            const avail = availableUnits(line.checkin_date, line.checkout_date)
+            for (const r of avail) {
+              const opt = document.createElement("option")
+              opt.value = String(r.unit_id)
+              opt.textContent = r.unit_code
+              sel.appendChild(opt)
+            }
+          }
+
+          sel.value = line.unit_id ? String(line.unit_id) : ""
+          sel.addEventListener("change", () => {
+            line.unit_id = sel.value
+          })
+
+          tdUnit.appendChild(sel)
+          tr.appendChild(tdUnit)
+
+          const tdComp = document.createElement("td")
+          const compEl = document.createElement("input")
+          compEl.value = line.company || ""
+          compEl.addEventListener("input", () => { line.company = compEl.value })
+          tdComp.appendChild(compEl)
+          tr.appendChild(tdComp)
+
+          const tdTen = document.createElement("td")
+          const tenEl = document.createElement("input")
+          tenEl.value = line.tenant_name || ""
+          tenEl.addEventListener("input", () => { line.tenant_name = tenEl.value })
+          tdTen.appendChild(tenEl)
+          tr.appendChild(tdTen)
+
+          const tdCom = document.createElement("td")
+          const comEl = document.createElement("input")
+          comEl.value = line.comment || ""
+          comEl.addEventListener("input", () => { line.comment = comEl.value })
+          tdCom.appendChild(comEl)
+          tr.appendChild(tdCom)
+
+          const tdRm = document.createElement("td")
+          const rmBtn = document.createElement("button")
+          rmBtn.type = "button"
+          rmBtn.className = "btn btnSmall btnGhost"
+          rmBtn.textContent = "Fjern"
+          rmBtn.addEventListener("click", () => {
+            reqLines = reqLines.filter(x => x._id !== line._id)
+            if (reqLines.length === 0) reqLines.push(newReqLine())
+            renderReqLines()
+          })
+          tdRm.appendChild(rmBtn)
+          tr.appendChild(tdRm)
+
+          elReqLinesTbody.appendChild(tr)
+        }
+      }
+
+      function isUnitIdAvailableForLine(unitId, checkin, checkout) {
+        const idNum = Number(unitId)
+        if (!Number.isFinite(idNum) || idNum <= 0) return false
+        const row = unitRows.find(r => Number(r.unit_id) === idNum)
+        if (!row) return false
+        return unitIsFree(row, checkin, checkout)
+      }
+
+      async function submitBookingRequest(e) {
+        e.preventDefault()
+        setMsg("")
+
+        if (isAdmin) return
+
+        const email = (elReqEmail.value || "").trim()
+        const phone = (elReqPhone.value || "").trim()
+
+        if (!email) {
+          setMsg("Fyll inn e-post")
+          return
+        }
+
+        const lines = []
+        for (const l of reqLines) {
+          if (!l.checkin_date || !l.checkout_date || !l.unit_id) continue
+          const len = daysBetween(l.checkin_date, l.checkout_date)
+          if (len < 7) continue
+          lines.push({
+            checkin_date: l.checkin_date,
+            checkout_date: l.checkout_date,
+            unit_id: Number(l.unit_id),
+            company: l.company || "",
+            tenant_name: l.tenant_name || "",
+            comment: l.comment || ""
+          })
+        }
+
+        if (lines.length === 0) {
+          setMsg("Legg inn minst én gyldig linje")
+          return
+        }
+
+        try {
+          await identityReady
+          const headers = await authHeaders({ "Content-Type": "application/json" })
+
+          const res = await fetch("/.netlify/functions/create-booking-request", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              email,
+              phone,
+              lines
+            })
+          })
+
+          if (res.status === 401) {
+            window.location.href = "/login/"
+            return
+          }
+
+          if (!res.ok) {
+            const t = await res.text()
+            setMsg(t || ("Feil. Status " + res.status))
+            return
+          }
+
+          setMsg("Forespørsel sendt")
+          reqLines = [newReqLine()]
+          renderReqLines()
+        } catch {
+          setMsg("Feil ved sending")
+        }
+      }
+
+      function normalizeRequests(raw) {
+        const list = Array.isArray(raw) ? raw : []
+        const out = []
+
+        for (const r of list) {
+          const reqId = r.request_id ?? r.requestId ?? r.id ?? r.request ?? ""
+          const created = r.created_at ?? r.createdAt ?? r.created ?? ""
+          const email = r.email ?? r.requester_email ?? r.requesterEmail ?? r.contact_email ?? ""
+          const phone = r.phone ?? r.requester_phone ?? r.requesterPhone ?? r.contact_phone ?? ""
+          const linesRaw = r.lines ?? r.request_lines ?? r.requestLines ?? r.items ?? []
+          const lines = Array.isArray(linesRaw) ? linesRaw : []
+
+          for (const l of lines) {
+            out.push({
+              request_id: reqId,
+              created_at: created,
+              email,
+              phone,
+              line_id: l.line_id ?? l.lineId ?? l.id ?? "",
+              status: String(l.status ?? l.state ?? "pending").toLowerCase(),
+              unit_code: l.unit_code ?? l.unitCode ?? l.unit ?? "",
+              unit_id: l.unit_id ?? l.unitId ?? "",
+              checkin_date: l.checkin_date ?? l.checkinDate ?? "",
+              checkout_date: l.checkout_date ?? l.checkoutDate ?? "",
+              company: l.company ?? "",
+              tenant_name: l.tenant_name ?? l.tenantName ?? "",
+              comment: l.comment ?? l.notes ?? ""
+            })
+          }
+        }
+
+        return out
+      }
+
+      function statusTextReq(s) {
+        const x = String(s || "").toLowerCase()
+        if (x === "approved" || x === "godkjent") return "Godkjent"
+        if (x === "rejected" || x === "avslatt" || x === "avslått") return "Avslått"
+        if (x === "cancelled" || x === "canceled") return "Avbrutt"
+        return "Ny"
+      }
+
+      async function loadBookingRequests() {
+        try {
+          const headers = await authHeaders()
+          const res = await fetch("/.netlify/functions/list-booking-requests", { headers })
+
+          if (res.status === 401) {
+            window.location.href = "/login/"
+            return
+          }
+
+          if (res.status === 403) {
+            elAdminReqTbody.innerHTML = ""
+            elReqBadge.style.display = "none"
+            return
+          }
+
+          if (!res.ok) {
+            const t = await res.text()
+            setMsg(t || ("Feil ved henting av forespørsler. Status " + res.status))
+            return
+          }
+
+          const raw = await res.json()
+          const lines = normalizeRequests(raw)
+
+          let pending = 0
+          for (const l of lines) {
+            const st = String(l.status || "").toLowerCase()
+            if (st === "pending" || st === "new" || st === "ny") pending++
+          }
+
+          if (pending > 0) {
+            elReqBadge.textContent = "Forespørsler: " + pending
+            elReqBadge.style.display = "inline-flex"
+          } else {
+            elReqBadge.style.display = "none"
+          }
+
+          elAdminReqTbody.innerHTML = ""
+          for (const l of lines) {
+            const tr = document.createElement("tr")
+
+            const tdA = document.createElement("td")
+            const idTxt = (l.request_id ? String(l.request_id) : "")
+            const createdTxt = l.created_at ? (" " + String(l.created_at)) : ""
+            tdA.textContent = (idTxt || "Forespørsel") + createdTxt
+            tr.appendChild(tdA)
+
+            const tdB = document.createElement("td")
+            const contact = (l.email ? l.email : "") + (l.phone ? (" " + l.phone) : "")
+            tdB.textContent = contact.trim()
+            tr.appendChild(tdB)
+
+            const tdC = document.createElement("td")
+            tdC.textContent = l.unit_code || ""
+            tr.appendChild(tdC)
+
+            const tdD = document.createElement("td")
+            tdD.textContent = fmtRange(l.checkin_date, l.checkout_date)
+            tr.appendChild(tdD)
+
+            const tdE = document.createElement("td")
+            tdE.textContent = l.company || ""
+            tr.appendChild(tdE)
+
+            const tdF = document.createElement("td")
+            tdF.textContent = l.tenant_name || ""
+            tr.appendChild(tdF)
+
+            const tdG = document.createElement("td")
+            tdG.textContent = l.comment || ""
+            tr.appendChild(tdG)
+
+            const tdH = document.createElement("td")
+            tdH.textContent = statusTextReq(l.status)
+            tr.appendChild(tdH)
+
+            const tdI = document.createElement("td")
+
+            const st = String(l.status || "").toLowerCase()
+            const canDecide = st === "pending" || st === "new" || st === "ny"
+
+            if (canDecide) {
+              const okBtn = document.createElement("button")
+              okBtn.type = "button"
+              okBtn.className = "btn btnSmall btnPrimary"
+              okBtn.textContent = "Godkjenn"
+              okBtn.addEventListener("click", () => decideLine(l.line_id, "approve"))
+
+              const noBtn = document.createElement("button")
+              noBtn.type = "button"
+              noBtn.className = "btn btnSmall btnDanger"
+              noBtn.style.marginLeft = "8px"
+              noBtn.textContent = "Avslå"
+              noBtn.addEventListener("click", () => decideLine(l.line_id, "reject"))
+
+              tdI.appendChild(okBtn)
+              tdI.appendChild(noBtn)
+            } else {
+              tdI.textContent = ""
+            }
+
+            tr.appendChild(tdI)
+            elAdminReqTbody.appendChild(tr)
+          }
+        } catch {
+          setMsg("Feil ved henting av forespørsler")
+        }
+      }
+
+      async function decideLine(lineId, action) {
+        if (!isAdmin) return
+        if (!lineId) {
+          setMsg("Mangler linje-id")
+          return
+        }
+
+        const ok = confirm(action === "approve" ? "Godkjenne linjen?" : "Avslå linjen?")
+        if (!ok) return
+
+        try {
+          const headers = await authHeaders({ "Content-Type": "application/json" })
+          const res = await fetch("/.netlify/functions/decide-booking-request-line", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              line_id: lineId,
+              action: action,
+              decision: action
+            })
+          })
+
+          if (res.status === 401) {
+            window.location.href = "/login/"
+            return
+          }
+
+          if (!res.ok) {
+            const t = await res.text()
+            setMsg(t || ("Feil. Status " + res.status))
+            return
+          }
+
+          setMsg(action === "approve" ? "Godkjent" : "Avslått")
+          await loadUnits()
+        } catch {
+          setMsg("Feil ved behandling")
+        }
+      }
+
       function logout() {
         const ni = window.netlifyIdentity
         if (!ni) return
@@ -1387,7 +1859,10 @@
 
       function initIdentity() {
         const ni = window.netlifyIdentity
-        if (!ni) return
+        if (!ni) {
+          setMsg("Fant ikke innloggingsmodulen")
+          return
+        }
 
         ni.on("init", (user) => {
           if (!user) {
@@ -1395,9 +1870,14 @@
             return
           }
 
-          IS_ADMIN = computeIsAdmin(user)
           elWho.textContent = user.email || ""
-          applyAccessUI()
+
+          const rolesRaw = user?.app_metadata?.roles || []
+          const roles = Array.isArray(rolesRaw) ? rolesRaw.map(r => String(r).toLowerCase()) : []
+          isAdmin = roles.includes("admin")
+
+          elReqEmail.value = user.email || ""
+          applyRoleUi()
 
           identityReadyResolve(user)
         })
@@ -1412,7 +1892,20 @@
       document.getElementById("refreshBtn").addEventListener("click", loadUnits)
       document.getElementById("logoutBtn").addEventListener("click", logout)
       document.getElementById("form").addEventListener("submit", createBooking)
-      elPrintBtn.addEventListener("click", printCleaningPlanPdf)
+
+      document.getElementById("addReqLineBtn").addEventListener("click", () => {
+        reqLines.push(newReqLine())
+        renderReqLines()
+      })
+      document.getElementById("reqForm").addEventListener("submit", submitBookingRequest)
+
+      elCheckin.addEventListener("change", () => fillAdminUnitSelect(elCheckin.value, elCheckout.value))
+      elCheckout.addEventListener("change", () => fillAdminUnitSelect(elCheckin.value, elCheckout.value))
+
+      document.getElementById("printWashBtn").addEventListener("click", printWashPlan)
+
+      reqLines = [newReqLine()]
+      renderReqLines()
 
       initIdentity()
       identityReady.then(() => loadUnits())
