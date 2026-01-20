@@ -1662,33 +1662,52 @@
       }
 
       function normalizeRequests(raw) {
-        const list = Array.isArray(raw) ? raw : []
+        const payload = raw && typeof raw === "object" ? raw : null
+        const list = Array.isArray(raw) ? raw : (Array.isArray(payload?.lines) ? payload.lines : [])
         const out = []
 
         for (const r of list) {
           const reqId = r.request_id ?? r.requestId ?? r.id ?? r.request ?? ""
           const created = r.created_at ?? r.createdAt ?? r.created ?? ""
-          const email = r.email ?? r.requester_email ?? r.requesterEmail ?? r.contact_email ?? ""
+          const email = r.email ?? r.requester_email ?? r.requesterEmail ?? r.requested_by_email ?? r.contact_email ?? ""
           const phone = r.phone ?? r.requester_phone ?? r.requesterPhone ?? r.contact_phone ?? ""
           const linesRaw = r.lines ?? r.request_lines ?? r.requestLines ?? r.items ?? []
           const lines = Array.isArray(linesRaw) ? linesRaw : []
 
-          for (const l of lines) {
+          if (lines.length === 0) {
             out.push({
               request_id: reqId,
               created_at: created,
               email,
               phone,
-              line_id: l.line_id ?? l.lineId ?? l.id ?? "",
-              status: String(l.status ?? l.state ?? "pending").toLowerCase(),
-              unit_code: l.unit_code ?? l.unitCode ?? l.unit ?? "",
-              unit_id: l.unit_id ?? l.unitId ?? "",
-              checkin_date: l.checkin_date ?? l.checkinDate ?? "",
-              checkout_date: l.checkout_date ?? l.checkoutDate ?? "",
-              company: l.company ?? "",
-              tenant_name: l.tenant_name ?? l.tenantName ?? "",
-              comment: l.comment ?? l.notes ?? ""
+              line_id: r.line_id ?? r.lineId ?? r.id ?? "",
+              status: String(r.status ?? r.state ?? "pending").toLowerCase(),
+              unit_code: r.unit_code ?? r.unitCode ?? r.unit ?? "",
+              unit_id: r.unit_id ?? r.unitId ?? "",
+              checkin_date: r.checkin_date ?? r.checkinDate ?? "",
+              checkout_date: r.checkout_date ?? r.checkoutDate ?? "",
+              company: r.company ?? "",
+              tenant_name: r.tenant_name ?? r.tenantName ?? "",
+              comment: r.comment ?? r.notes ?? ""
             })
+          } else {
+            for (const l of lines) {
+              out.push({
+                request_id: reqId,
+                created_at: created,
+                email,
+                phone,
+                line_id: l.line_id ?? l.lineId ?? l.id ?? "",
+                status: String(l.status ?? l.state ?? "pending").toLowerCase(),
+                unit_code: l.unit_code ?? l.unitCode ?? l.unit ?? "",
+                unit_id: l.unit_id ?? l.unitId ?? "",
+                checkin_date: l.checkin_date ?? l.checkinDate ?? "",
+                checkout_date: l.checkout_date ?? l.checkoutDate ?? "",
+                company: l.company ?? "",
+                tenant_name: l.tenant_name ?? l.tenantName ?? "",
+                comment: l.comment ?? l.notes ?? ""
+              })
+            }
           }
         }
 
