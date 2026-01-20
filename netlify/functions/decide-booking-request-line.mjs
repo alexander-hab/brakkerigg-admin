@@ -1,5 +1,9 @@
 import { neon } from "@netlify/neon"
 
+function isIsoDate(s) {
+  return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s)
+}
+
 function isAdmin(context) {
   const user = context?.clientContext?.user || null
   const rolesRaw = user?.app_metadata?.roles || []
@@ -31,7 +35,9 @@ export const handler = async (event, context) => {
       select
         rl.*,
         r.requester_email,
-        r.requester_phone
+        r.requester_phone,
+        rl.checkin_date::text as checkin_date,
+        rl.checkout_date::text as checkout_date
       from booking_request_lines rl
       join booking_requests r on r.id = rl.request_id
       where rl.id = ${lineId}
@@ -41,12 +47,14 @@ export const handler = async (event, context) => {
     if (!ln) return { statusCode: 404, body: "Fant ikke linje" }
     if (String(ln.status) !== "pending") return { statusCode: 409, body: "Allerede behandlet" }
 
+    const decidedByUserId = String(user.id || user.sub || "").trim() || null
+
     if (action === "reject") {
       await sql`
         update booking_request_lines
         set status = 'rejected',
             decided_at = now(),
-            decided_by_user_id = ${String(user.id || "")}
+            decided_by_user_id = ${decidedByUserId}
         where id = ${lineId};
       `
       return {
@@ -57,8 +65,12 @@ export const handler = async (event, context) => {
     }
 
     const unitId = Number(ln.unit_id)
-    const checkin = String(ln.checkin_date)
-    const checkout = String(ln.checkout_date)
+    const checkin = String(ln.checkin_date || "")
+    const checkout = String(ln.checkout_date || "")
+
+    if (!isIsoDate(checkin) || !isIsoDate(checkout)) {
+      return { statusCode: 500, body: "Ugyldige datoer på forespørselen" }
+    }
 
     const conflict = await sql`
       select 1
@@ -93,7 +105,7 @@ export const handler = async (event, context) => {
       set status = 'approved',
           approved_booking_id = ${bookingId},
           decided_at = now(),
-          decided_by_user_id = ${String(user.id || "")}
+          decided_by_user_id = ${decidedByUserId}
       where id = ${lineId};
     `
 
