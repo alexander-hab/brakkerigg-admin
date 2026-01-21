@@ -206,6 +206,19 @@
         margin: 0;
       }
 
+      .contractNotice{
+        margin-top: 8px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .contractActions{
+        margin-top: 8px;
+        display:flex;
+        flex-wrap:wrap;
+        gap: 8px;
+      }
+
       .mapWrap{ position: relative; width: 100%; max-width: 1100px; }
       .mapImg{
         width: 100%;
@@ -657,6 +670,12 @@
           <p class="muted">Bookinger må være fra mandag til mandag i hele uker.</p>
           <p class="muted">Dersom romnummer ikke kommer opp i ønsket leieperiode selv om den ser ledig ut i oversikten kan den allerede være forespurt av noen andre.</p>
           <div class="reqSuccess" id="reqSuccess">Forespørsel sendt</div>
+          <div class="contractNotice">Fyll ut og send inn signert kontrakt til steffan@hab.no.</div>
+          <div class="contractActions">
+            <a class="btn btnGhost btnSmall" href="/admin/kontrakt-norsk.pdf" download>Kontrakt norsk</a>
+            <a class="btn btnGhost btnSmall" href="/admin/kontrakt-engelsk.pdf" download>Kontrakt engelsk</a>
+            <a class="btn btnGhost btnSmall" href="/admin/kontrakt-polsk.pdf" download>Kontrakt polsk</a>
+          </div>
 
           <form id="reqForm">
             <div class="formGrid">
