@@ -36,6 +36,7 @@ export const handler = async (event, context) => {
       select
         rl.*,
         r.requester_email,
+        r.requested_by_email,
         r.requester_phone,
         rl.checkin_date::text as checkin_date,
         rl.checkout_date::text as checkout_date
@@ -49,6 +50,7 @@ export const handler = async (event, context) => {
     if (String(ln.status) !== "pending") return { statusCode: 409, body: "Allerede behandlet" }
 
     const decidedByUserId = String(user.id || user.sub || "").trim() || null
+    const requesterEmail = String(ln.requester_email || ln.requested_by_email || "").trim() || null
 
     if (action === "reject") {
       await sql`
@@ -59,7 +61,7 @@ export const handler = async (event, context) => {
         where id = ${lineId};
       `
 
-      const recipientEmail = String(ln.requester_email || "").trim() || null
+      const recipientEmail = requesterEmail
       if (recipientEmail) {
         const text = [
           "Beklager, forespørselen din er avslått.",
@@ -124,7 +126,7 @@ export const handler = async (event, context) => {
         ${unitId},
         ${ln.tenant_name || null},
         ${ln.company || null},
-        ${ln.requester_email || null},
+        ${requesterEmail},
         ${ln.requester_phone || null},
         ${checkin}::date,
         ${checkout}::date,
@@ -144,7 +146,7 @@ export const handler = async (event, context) => {
       where id = ${lineId};
     `
 
-    const recipientEmail = String(ln.requester_email || "").trim() || null
+    const recipientEmail = requesterEmail
     if (recipientEmail) {
       const text = [
         "Bookingforespørselen din er godkjent.",

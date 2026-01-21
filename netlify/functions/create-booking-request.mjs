@@ -31,8 +31,8 @@ export const handler = async (event, context) => {
     let body = {}
     try { body = event.body ? JSON.parse(event.body) : {} } catch { return { statusCode: 400, body: "Ugyldig JSON" } }
 
-    const requesterEmail = String(body.requester_email || "").trim() || null
-    const requesterPhone = String(body.requester_phone || "").trim() || null
+    const requesterEmail = String(body.requester_email || body.email || "").trim() || null
+    const requesterPhone = String(body.requester_phone || body.phone || "").trim() || null
     const lines = Array.isArray(body.lines) ? body.lines : []
 
     if (lines.length === 0) return { statusCode: 400, body: "Mangler linjer" }
