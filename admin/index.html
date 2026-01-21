@@ -313,6 +313,34 @@
       .pillRed .dot{ background: #ef4444; }
       .pillYellow .dot{ background: #eab308; }
 
+      .legend{
+        display:flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        margin: 0 0 12px 0;
+        padding: 0;
+        list-style: none;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .legend li{
+        display:flex;
+        align-items:center;
+        gap: 6px;
+      }
+
+      .legendSwatch{
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        border: 1px solid rgba(2,6,23,0.15);
+      }
+
+      .legendGreen{ background: var(--green); }
+      .legendYellow{ background: var(--yellow); }
+      .legendRed{ background: var(--red); }
+
       label{
         display:block;
         font-size: 12px;
@@ -390,6 +418,19 @@
         min-width: 980px;
       }
 
+      .reqSuccess{
+        display:none;
+        margin: 8px 0 0 0;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(34,197,94,0.4);
+        background: rgba(34,197,94,0.15);
+        color: #166534;
+        font-size: 12px;
+        font-weight: 800;
+        width: fit-content;
+      }
+
       @media (max-width: 860px){
         .formGrid{ grid-template-columns: 1fr; }
         .actions{ justify-content:flex-start; }
@@ -432,6 +473,11 @@
             <h2>Kart</h2>
             <div class="hint">Klikk på et rom</div>
           </div>
+          <ul class="legend">
+            <li><span class="legendSwatch legendGreen"></span> Ledig</li>
+            <li><span class="legendSwatch legendYellow"></span> Ledig, booket</li>
+            <li><span class="legendSwatch legendRed"></span> Utleid</li>
+          </ul>
           <div class="mapWrap" id="mapWrap">
             <img class="mapImg" src="/admin/kart.png" alt="Kart over enheter" />
             <div class="mapLayer" id="mapLayer"></div>
@@ -450,13 +496,13 @@
                 <tr>
                   <th>Enhet</th>
                   <th>Status</th>
+                  <th class="adminOnly">Booking nr</th>
                   <th>Leietaker nå</th>
                   <th>Firma</th>
                   <th>Innflytting</th>
                   <th>Utflytting</th>
                   <th>Dager igjen</th>
                   <th>Lengde nå</th>
-                  <th>Sum dager utleid ferdig</th>
                   <th>Kommende bookinger</th>
                   <th>Handling</th>
                 </tr>
@@ -563,6 +609,8 @@
           </div>
 
           <p class="muted">Du kan legge inn flere linjer. Admin godkjenner eller avslår per linje.</p>
+          <p class="muted">Dersom romnummer ikke kommer opp i ønsket leieperiode selv om den ser ledig ut i oversikten kan den allerede være forespurt av noen andre.</p>
+          <div class="reqSuccess" id="reqSuccess">Forespørsel sendt</div>
 
           <form id="reqForm">
             <div class="formGrid">
@@ -636,6 +684,7 @@
       const elMapLayer = document.getElementById("mapLayer")
 
       const elBookingCard = document.getElementById("bookingCard")
+      const elWashCard = document.getElementById("washCard")
       const elWashTitle = document.getElementById("washTitle")
       const elWashKpi = document.getElementById("washKpi")
       const elWashTbody = document.getElementById("washTbody")
@@ -645,6 +694,7 @@
       const elAdminRequestsCard = document.getElementById("adminRequestsCard")
       const elAdminReqTbody = document.getElementById("adminReqTbody")
       const elReqBadge = document.getElementById("reqBadge")
+      const elReqSuccess = document.getElementById("reqSuccess")
 
       const elUnitSelect = document.getElementById("unitId")
       const elCheckin = document.getElementById("checkinDate")
@@ -808,6 +858,18 @@
         return pill
       }
 
+      function bookingWho(booking) {
+        if (!booking) return ""
+        if (isAdmin) return booking.company || booking.tenant_name || ""
+        return booking.company || ""
+      }
+
+      function bookingIdLabel(bookingId) {
+        if (!isAdmin || !bookingId) return ""
+        return "Booking #" + bookingId
+      }
+
+
       function clearTable() {
         elTbody.innerHTML = ""
       }
@@ -827,8 +889,11 @@
 
           const txt = document.createElement("div")
           txt.className = "upText"
-          const who = (b.company || b.tenant_name) ? (" " + (b.company || b.tenant_name)) : ""
-          txt.textContent = fmtRange(b.checkin_date || "", b.checkout_date || "") + who
+          const who = bookingWho(b)
+          const whoText = who ? (" " + who) : ""
+          const idText = bookingIdLabel(b.id)
+          const idSuffix = idText ? (" · " + idText) : ""
+          txt.textContent = fmtRange(b.checkin_date || "", b.checkout_date || "") + whoText + idSuffix
 
           line.appendChild(txt)
 
@@ -863,8 +928,14 @@
         tdStatus.appendChild(statusPill(row))
         tr.appendChild(tdStatus)
 
+        const tdBooking = document.createElement("td")
+        tdBooking.className = "adminOnly"
+        tdBooking.textContent = row.current_booking_id ? String(row.current_booking_id) : ""
+        tr.appendChild(tdBooking)
+
+
         const tdTenant = document.createElement("td")
-        tdTenant.textContent = row.current_tenant_name || ""
+        tdTenant.textContent = isAdmin ? (row.current_tenant_name || "") : ""
         tr.appendChild(tdTenant)
 
         const tdCompany = document.createElement("td")
@@ -886,10 +957,6 @@
         const tdLen = document.createElement("td")
         tdLen.textContent = lengthNow
         tr.appendChild(tdLen)
-
-        const tdTotal = document.createElement("td")
-        tdTotal.textContent = row.total_days_completed || 0
-        tr.appendChild(tdTotal)
 
         tr.appendChild(upcomingCell(row))
 
@@ -1034,8 +1101,9 @@
             const lines = []
             lines.push("Enhet " + code)
             lines.push(statusPill(r).textContent || "")
+            if (isAdmin && r.current_booking_id) lines.push("Booking: " + r.current_booking_id)
             if (r.current_company) lines.push("Firma: " + r.current_company)
-            if (r.current_tenant_name) lines.push("Leietaker: " + r.current_tenant_name)
+            if (isAdmin && r.current_tenant_name) lines.push("Leietaker: " + r.current_tenant_name)
             if (r.current_checkin_date) lines.push("Inn: " + fmtDate(r.current_checkin_date))
             if (r.current_checkout_date) lines.push("Ut: " + fmtDate(r.current_checkout_date))
 
@@ -1044,8 +1112,11 @@
               lines.push("Kommende:")
               for (let i = 0; i < Math.min(6, up.length); i++) {
                 const b = up[i]
-                const who = (b.company || b.tenant_name) ? (" " + (b.company || b.tenant_name)) : ""
-                lines.push(fmtRange(b.checkin_date || "", b.checkout_date || "") + who)
+                const who = bookingWho(b)
+                const whoText = who ? (" " + who) : ""
+                const idText = bookingIdLabel(b.id)
+                const idSuffix = idText ? (" · " + idText) : ""
+                lines.push(fmtRange(b.checkin_date || "", b.checkout_date || "") + whoText + idSuffix)
               }
             }
 
@@ -1271,8 +1342,12 @@
 
       function applyRoleUi() {
         elBookingCard.style.display = isAdmin ? "block" : "none"
+        elWashCard.style.display = isAdmin ? "block" : "none"
         elAdminRequestsCard.style.display = isAdmin ? "block" : "none"
         elRequestCard.style.display = isAdmin ? "none" : "block"
+         document.querySelectorAll(".adminOnly").forEach((el) => {
+          el.style.display = isAdmin ? "" : "none"
+        })
       }
 
       function fillAdminUnitSelect(checkin, checkout) {
@@ -1599,6 +1674,7 @@
         setMsg("")
 
         if (isAdmin) return
+        elReqSuccess.style.display = "none"
 
         const email = (elReqEmail.value || "").trim()
         const phone = (elReqPhone.value || "").trim()
@@ -1653,7 +1729,8 @@
             return
           }
 
-          setMsg("Forespørsel sendt")
+          setMsg("")
+          elReqSuccess.style.display = "inline-flex"
           reqLines = [newReqLine()]
           renderReqLines()
         } catch {
