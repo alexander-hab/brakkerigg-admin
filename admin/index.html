@@ -112,6 +112,8 @@
 
       .adminOnly{ display: none; }
       body.is-admin .adminOnly{ display: table-cell; }
+      .adminOnlyBlock{ display: none; }
+      body.is-admin .adminOnlyBlock{ display: block; }
 
       .btn{
         appearance:none;
@@ -384,6 +386,26 @@
         flex-wrap:wrap;
       }
 
+      .reportBox{
+        margin-top: 14px;
+        border: 1px dashed var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        background: #fbfbfd;
+      }
+
+      .reportBox h3{
+        margin: 0 0 6px 0;
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .reportBox .hint{
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 10px;
+      }
+
       .upLine{
         display:flex;
         gap: 8px;
@@ -563,6 +585,24 @@
               <button class="btn btnPrimary" type="submit">Opprett booking</button>
             </div>
           </form>
+
+          <div class="reportBox adminOnlyBlock">
+            <h3>Bookingrapport</h3>
+            <div class="hint">Velg periode og generer PDF med bookinger i perioden.</div>
+            <div class="formGrid">
+              <div>
+                <label>Fra dato</label>
+                <input id="reportStart" type="date" />
+              </div>
+              <div>
+                <label>Til dato</label>
+                <input id="reportEnd" type="date" />
+              </div>
+            </div>
+            <div class="formActions">
+              <button class="btn btnGhost" type="button" id="reportBtn">Generer PDF</button>
+            </div>
+          </div>
         </div>
 
         <div class="card" id="washCard">
@@ -705,6 +745,9 @@
       const elUnitSelect = document.getElementById("unitId")
       const elCheckin = document.getElementById("checkinDate")
       const elCheckout = document.getElementById("checkoutDate")
+      const elReportStart = document.getElementById("reportStart")
+      const elReportEnd = document.getElementById("reportEnd")
+      const elReportBtn = document.getElementById("reportBtn")
 
       const elReqEmail = document.getElementById("reqEmail")
       const elReqPhone = document.getElementById("reqPhone")
@@ -1345,6 +1388,141 @@
         }
       }
 
+      function collectBookingsForReport(startIso, endIso) {
+        const list = []
+        for (const row of unitRows) {
+          const unitCode = row.unit_code || ""
+          if (row.current_checkin_date && row.current_checkout_date) {
+            list.push({
+              unit_code: unitCode,
+              booking_id: row.current_booking_id || "",
+              company: row.current_company || "",
+              tenant_name: row.current_tenant_name || "",
+              tenant_email: row.current_tenant_email || "",
+              tenant_phone: row.current_tenant_phone || "",
+              checkin_date: row.current_checkin_date,
+              checkout_date: row.current_checkout_date
+            })
+          }
+
+          const up = getUpcoming(row)
+          for (const b of up) {
+            if (!b || !b.checkin_date || !b.checkout_date) continue
+            list.push({
+              unit_code: unitCode,
+              booking_id: b.id || "",
+              company: b.company || "",
+              tenant_name: b.tenant_name || "",
+              tenant_email: b.tenant_email || "",
+              tenant_phone: b.tenant_phone || "",
+              checkin_date: b.checkin_date,
+              checkout_date: b.checkout_date
+            })
+          }
+        }
+
+        return list.filter((b) => overlaps(b.checkin_date, b.checkout_date, startIso, endIso))
+      }
+
+      function bookingReportLine(booking) {
+        const parts = []
+        if (booking.unit_code) parts.push("Enhet " + booking.unit_code)
+        parts.push("Periode " + fmtRange(booking.checkin_date, booking.checkout_date))
+
+        const detailParts = []
+        if (booking.company) detailParts.push(booking.company)
+        if (booking.tenant_name) detailParts.push(booking.tenant_name)
+        if (booking.tenant_email) detailParts.push(booking.tenant_email)
+        if (booking.tenant_phone) detailParts.push(booking.tenant_phone)
+        if (detailParts.length) parts.push(detailParts.join(" · "))
+        if (booking.booking_id) parts.push("Booking #" + booking.booking_id)
+        return parts.join(" · ")
+      }
+
+      async function generateBookingReport() {
+        try {
+          if (!isAdmin) {
+            setMsg("Ingen tilgang")
+            return
+          }
+
+          const startIso = elReportStart.value
+          const endIso = elReportEnd.value
+
+          if (!startIso || !endIso) {
+            setMsg("Velg fra- og til-dato")
+            return
+          }
+
+          const startDate = parseIsoDate(startIso)
+          const endDate = parseIsoDate(endIso)
+          if (!startDate || !endDate) {
+            setMsg("Ugyldig dato")
+            return
+          }
+
+          if (startDate >= endDate) {
+            setMsg("Til-dato må være etter fra-dato")
+            return
+          }
+
+          if (!canUsePdfLibs()) {
+            setMsg("Fant ikke PDF-bibliotek. Oppdater siden.")
+            return
+          }
+
+          const bookings = collectBookingsForReport(startIso, endIso)
+          bookings.sort((a, b) => {
+            const dateCmp = String(a.checkin_date || "").localeCompare(String(b.checkin_date || ""))
+            if (dateCmp !== 0) return dateCmp
+            return String(a.unit_code || "").localeCompare(String(b.unit_code || ""), "nb")
+          })
+
+          const { jsPDF } = window.jspdf
+          const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" })
+
+          const pageW = doc.internal.pageSize.getWidth()
+          const pageH = doc.internal.pageSize.getHeight()
+          const margin = 40
+
+          let y = margin
+          doc.setFont("helvetica", "bold")
+          doc.setFontSize(14)
+          doc.text("Bookingrapport", margin, y)
+          y += 18
+
+          doc.setFont("helvetica", "normal")
+          doc.setFontSize(10)
+          doc.text("Periode: " + fmtRange(startIso, endIso), margin, y)
+          y += 14
+          doc.text("Antall bookinger: " + bookings.length, margin, y)
+          y += 16
+
+          if (bookings.length === 0) {
+            doc.text("Ingen bookinger i perioden.", margin, y)
+          } else {
+            for (const booking of bookings) {
+              const line = bookingReportLine(booking)
+              const lines = doc.splitTextToSize(line, pageW - margin * 2)
+              for (const textLine of lines) {
+                if (y > pageH - margin) {
+                  doc.addPage()
+                  y = margin
+                }
+                doc.text(textLine, margin, y)
+                y += 12
+              }
+              y += 4
+            }
+          }
+
+          doc.save("bookingrapport-" + startIso + "-" + endIso + ".pdf")
+        } catch {
+          setMsg("Klarte ikke å lage PDF")
+        }
+      }
+
+
       let identityReadyResolve
       const identityReady = new Promise((res) => { identityReadyResolve = res })
 
@@ -1362,8 +1540,11 @@
         elWashCard.style.display = isAdmin ? "block" : "none"
         elAdminRequestsCard.style.display = isAdmin ? "block" : "none"
         elRequestCard.style.display = isAdmin ? "none" : "block"
-         document.querySelectorAll(".adminOnly").forEach((el) => {
+        document.querySelectorAll(".adminOnly").forEach((el) => {
           el.style.display = isAdmin ? "" : "none"
+        })
+        document.querySelectorAll(".adminOnlyBlock").forEach((el) => {
+          el.style.display = isAdmin ? "block" : "none"
         })
       }
 
@@ -2033,6 +2214,7 @@
       elCheckout.addEventListener("change", () => fillAdminUnitSelect(elCheckin.value, elCheckout.value))
 
       document.getElementById("printWashBtn").addEventListener("click", printWashPlan)
+      elReportBtn.addEventListener("click", generateBookingReport)
 
       reqLines = [newReqLine()]
       renderReqLines()
