@@ -110,6 +110,9 @@
         display:none;
       }
 
+      .adminOnly{ display: none; }
+      body.is-admin .adminOnly{ display: table-cell; }
+
       .btn{
         appearance:none;
         border: 1px solid var(--line);
