@@ -521,7 +521,8 @@
             <div class="hint">Kun admin</div>
           </div>
 
-          <p class="muted">Utflytting er datoen de forlater enheten. Minimum 7 netter.</p>
+          <p class="muted">Pris: 1-3 uker koster 2500 kr per uke. 4 uker eller mer koster 8000 kr per 4 uker (2000 kr per uke).</p>
+          <p class="muted">Bookinger må være fra mandag til mandag i hele uker. Utflytting er datoen de forlater enheten.</p>
 
           <form id="form">
             <div class="formGrid">
@@ -611,7 +612,9 @@
             <div class="hint">Sendes til admin</div>
           </div>
 
+          <p class="muted">Pris: 1-3 uker koster 2500 kr per uke. 4 uker eller mer koster 8000 kr per 4 uker (2000 kr per uke).</p>
           <p class="muted">Du kan legge inn flere linjer. Admin godkjenner eller avslår per linje.</p>
+          <p class="muted">Bookinger må være fra mandag til mandag i hele uker.</p>
           <p class="muted">Dersom romnummer ikke kommer opp i ønsket leieperiode selv om den ser ledig ut i oversikten kan den allerede være forespurt av noen andre.</p>
           <div class="reqSuccess" id="reqSuccess">Forespørsel sendt</div>
 
@@ -773,6 +776,17 @@
         const diff = Math.round((db - da) / (1000 * 60 * 60 * 24))
         return Number.isFinite(diff) ? diff : ""
       }
+
+      function isMondayIso(iso) {
+        const d = parseIsoDate(iso)
+        return d ? d.getDay() === 1 : false
+      }
+
+      function isWholeWeeks(checkin, checkout) {
+        const len = daysBetween(checkin, checkout)
+        return Number.isFinite(len) && len >= 7 && len % 7 === 0
+      }
+
 
       function daysLeft(checkout) {
         if (!checkout) return ""
@@ -1442,8 +1456,12 @@
         }
 
         const len = daysBetween(checkinDate, checkoutDate)
-        if (len < 7) {
+        if (!Number.isFinite(len) || len < 7) {
           setMsg("Minimum leieperiode er 7 netter")
+          return
+        }
+        if (!isMondayIso(checkinDate) || !isMondayIso(checkoutDate) || len % 7 !== 0) {
+          setMsg("Bookinger må være fra mandag til mandag i hele uker")
           return
         }
 
@@ -1688,10 +1706,14 @@
         }
 
         const lines = []
+        let invalidLines = false
         for (const l of reqLines) {
           if (!l.checkin_date || !l.checkout_date || !l.unit_id) continue
           const len = daysBetween(l.checkin_date, l.checkout_date)
-          if (len < 7) continue
+          if (!Number.isFinite(len) || len < 7 || len % 7 !== 0 || !isMondayIso(l.checkin_date) || !isMondayIso(l.checkout_date)) {
+            invalidLines = true
+            continue
+          }
           lines.push({
             checkin_date: l.checkin_date,
             checkout_date: l.checkout_date,
@@ -1701,6 +1723,12 @@
             comment: l.comment || ""
           })
         }
+
+        if (invalidLines) {
+          setMsg("Bookinger må være fra mandag til mandag i hele uker")
+          return
+        }
+
 
         if (lines.length === 0) {
           setMsg("Legg inn minst én gyldig linje")

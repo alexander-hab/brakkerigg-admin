@@ -11,6 +11,16 @@ function daysBetween(a, b) {
   return Math.round((db - da) / (1000 * 60 * 60 * 24))
 }
 
+function isMondayIso(s) {
+  if (!isIsoDate(s)) return false
+  return new Date(s).getUTCDay() === 1
+}
+
+function isWholeWeeks(a, b) {
+  const len = daysBetween(a, b)
+  return Number.isFinite(len) && len >= 7 && len % 7 === 0
+}
+
 export const handler = async (event, context) => {
   try {
     if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method not allowed" }
@@ -36,6 +46,9 @@ export const handler = async (event, context) => {
 
       const len = daysBetween(checkin, checkout)
       if (!Number.isFinite(len) || len < 7) return { statusCode: 400, body: "Minimum 7 netter" }
+      if (!isMondayIso(checkin) || !isMondayIso(checkout) || !isWholeWeeks(checkin, checkout)) {
+        return { statusCode: 400, body: "Bookinger må være fra mandag til mandag i hele uker" }
+      }
     }
 
     const sql = neon(process.env.DATABASE_URL)
