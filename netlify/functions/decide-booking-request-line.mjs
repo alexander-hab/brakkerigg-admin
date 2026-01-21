@@ -1,5 +1,5 @@
 import { neon } from "@netlify/neon"
-import { sendResendEmail } from "./_resend.mjs"
+import { sendEmailjsEmail } from "./_emailjs.mjs"
 
 function isIsoDate(s) {
   return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s)
@@ -80,11 +80,12 @@ export const handler = async (event, context) => {
         `
 
         try {
-          await sendResendEmail({
+          await sendEmailjsEmail({
             to: recipientEmail,
             subject: `Forespørsel avslått (#${ln.request_id || ""})`,
             text,
-            html
+            html,
+            templateId: process.env.EMAILJS_TEMPLATE_ID_REJECTED
           })
         } catch (err) {
           console.error("Klarte ikke å sende avslagsepost", err)
@@ -167,11 +168,12 @@ export const handler = async (event, context) => {
       `
 
       try {
-        await sendResendEmail({
+        await sendEmailjsEmail({
           to: recipientEmail,
           subject: `Booking godkjent (#${bookingId})`,
           text,
-          html
+          html,
+          templateId: process.env.EMAILJS_TEMPLATE_ID_APPROVED
         })
       } catch (err) {
         console.error("Klarte ikke å sende godkjenningsepost", err)

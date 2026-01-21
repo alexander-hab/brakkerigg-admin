@@ -1,5 +1,5 @@
 import { neon } from "@netlify/neon"
-import { sendResendEmail } from "./_resend.mjs"
+import { sendEmailjsEmail } from "./_emailjs.mjs"
 
 function isIsoDate(s) {
   return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s)
@@ -148,11 +148,12 @@ export const handler = async (event, context) => {
       `
 
       try {
-        await sendResendEmail({
+        await sendEmailjsEmail({
           to: recipientEmail,
           subject: `Forespørsel mottatt (#${requestId})`,
           text,
-          html
+          html,
+          templateId: process.env.EMAILJS_TEMPLATE_ID_REQUEST
         })
       } catch (err) {
         console.error("Klarte ikke å sende forespørselsepost", err)
