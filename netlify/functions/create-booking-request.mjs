@@ -1,4 +1,5 @@
 import { neon } from "@netlify/neon"
+import { sendResendEmail } from "./_resend.mjs"
 
 function isIsoDate(s) {
   return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s)
@@ -89,6 +90,73 @@ export const handler = async (event, context) => {
         values
           (${requestId}, ${unitId}, ${tenantName}, ${company}, ${comment}, ${checkin}::date, ${checkout}::date, 'pending');
       `
+    }
+
+    const recipientEmail = requesterEmail || String(user.email || "").trim() || null
+    if (recipientEmail) {
+      const linesText = lines.map((ln, idx) => {
+        const tenantName = String(ln.tenant_name || "").trim()
+        const company = String(ln.company || "").trim()
+        const comment = String(ln.comment || "").trim()
+        const unitId = ln.unit_id
+        const checkin = ln.checkin_date
+        const checkout = ln.checkout_date
+
+        const meta = [
+          tenantName ? `Navn: ${tenantName}` : null,
+          company ? `Firma: ${company}` : null,
+          comment ? `Kommentar: ${comment}` : null
+        ].filter(Boolean).join(" | ")
+
+        return `${idx + 1}. Enhet: ${unitId}, ${checkin} → ${checkout}${meta ? ` (${meta})` : ""}`
+      }).join("\n")
+
+      const text = [
+        "Vi har mottatt bookingforespørselen din.",
+        "",
+        `Forespørselsnummer: ${requestId}`,
+        linesText,
+        "",
+        "Påminnelse: Kontrakt må være signert før forespørselen kan godkjennes.",
+        "",
+        "Vi tar kontakt så snart forespørselen er behandlet."
+      ].join("\n")
+
+      const htmlLines = lines.map((ln, idx) => {
+        const tenantName = String(ln.tenant_name || "").trim()
+        const company = String(ln.company || "").trim()
+        const comment = String(ln.comment || "").trim()
+        const unitId = ln.unit_id
+        const checkin = ln.checkin_date
+        const checkout = ln.checkout_date
+
+        const meta = [
+          tenantName ? `Navn: ${tenantName}` : null,
+          company ? `Firma: ${company}` : null,
+          comment ? `Kommentar: ${comment}` : null
+        ].filter(Boolean).join(" | ")
+
+        return `<li><strong>${idx + 1}.</strong> Enhet ${unitId}, ${checkin} → ${checkout}${meta ? ` (${meta})` : ""}</li>`
+      }).join("")
+
+      const html = `
+        <p>Vi har mottatt bookingforespørselen din.</p>
+        <p><strong>Forespørselsnummer:</strong> ${requestId}</p>
+        <ul>${htmlLines}</ul>
+        <p><strong>Påminnelse:</strong> Kontrakt må være signert før forespørselen kan godkjennes.</p>
+        <p>Vi tar kontakt så snart forespørselen er behandlet.</p>
+      `
+
+      try {
+        await sendResendEmail({
+          to: recipientEmail,
+          subject: `Forespørsel mottatt (#${requestId})`,
+          text,
+          html
+        })
+      } catch (err) {
+        console.error("Klarte ikke å sende forespørselsepost", err)
+      }
     }
 
     return {

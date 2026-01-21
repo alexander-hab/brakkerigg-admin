@@ -1,4 +1,5 @@
 import { neon } from "@netlify/neon"
+import { sendResendEmail } from "./_resend.mjs"
 
 function isIsoDate(s) {
   return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s)
@@ -57,6 +58,39 @@ export const handler = async (event, context) => {
             decided_by_user_id = ${decidedByUserId}
         where id = ${lineId};
       `
+
+      const recipientEmail = String(ln.requester_email || "").trim() || null
+      if (recipientEmail) {
+        const text = [
+          "Beklager, forespørselen din er avslått.",
+          "",
+          `Forespørselsnummer: ${ln.request_id || ""}`,
+          `Enhet: ${ln.unit_id}`,
+          `Periode: ${ln.checkin_date} → ${ln.checkout_date}`,
+          "",
+          "Ta gjerne kontakt om du ønsker andre datoer."
+        ].join("\n")
+
+        const html = `
+          <p>Beklager, forespørselen din er avslått.</p>
+          <p><strong>Forespørselsnummer:</strong> ${ln.request_id || ""}</p>
+          <p><strong>Enhet:</strong> ${ln.unit_id}</p>
+          <p><strong>Periode:</strong> ${ln.checkin_date} → ${ln.checkout_date}</p>
+          <p>Ta gjerne kontakt om du ønsker andre datoer.</p>
+        `
+
+        try {
+          await sendResendEmail({
+            to: recipientEmail,
+            subject: `Forespørsel avslått (#${ln.request_id || ""})`,
+            text,
+            html
+          })
+        } catch (err) {
+          console.error("Klarte ikke å sende avslagsepost", err)
+        }
+      }
+
       return {
         statusCode: 200,
         headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
@@ -108,6 +142,41 @@ export const handler = async (event, context) => {
           decided_by_user_id = ${decidedByUserId}
       where id = ${lineId};
     `
+
+    const recipientEmail = String(ln.requester_email || "").trim() || null
+    if (recipientEmail) {
+      const text = [
+        "Bookingforespørselen din er godkjent.",
+        "",
+        `Bookingnummer: ${bookingId}`,
+        `Forespørselsnummer: ${ln.request_id || ""}`,
+        `Enhet: ${ln.unit_id}`,
+        `Periode: ${checkin} → ${checkout}`,
+        ln.tenant_name ? `Navn: ${ln.tenant_name}` : null,
+        ln.company ? `Firma: ${ln.company}` : null
+      ].filter(Boolean).join("\n")
+
+      const html = `
+        <p>Bookingforespørselen din er godkjent.</p>
+        <p><strong>Bookingnummer:</strong> ${bookingId}</p>
+        <p><strong>Forespørselsnummer:</strong> ${ln.request_id || ""}</p>
+        <p><strong>Enhet:</strong> ${ln.unit_id}</p>
+        <p><strong>Periode:</strong> ${checkin} → ${checkout}</p>
+        ${ln.tenant_name ? `<p><strong>Navn:</strong> ${ln.tenant_name}</p>` : ""}
+        ${ln.company ? `<p><strong>Firma:</strong> ${ln.company}</p>` : ""}
+      `
+
+      try {
+        await sendResendEmail({
+          to: recipientEmail,
+          subject: `Booking godkjent (#${bookingId})`,
+          text,
+          html
+        })
+      } catch (err) {
+        console.error("Klarte ikke å sende godkjenningsepost", err)
+      }
+    }
 
     return {
       statusCode: 200,
