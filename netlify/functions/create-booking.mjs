@@ -21,6 +21,23 @@ function isWholeWeeks(a, b) {
   return Number.isFinite(len) && len >= 7 && len % 7 === 0
 }
 
+function bookingWeeks(a, b) {
+  const len = daysBetween(a, b)
+  if (!Number.isFinite(len) || len < 7 || len % 7 !== 0) return null
+  return len / 7
+}
+
+function bookingPriceForWeeks(weeks) {
+  if (!Number.isFinite(weeks) || weeks <= 0) return null
+  const rate = weeks >= 4 ? 2000 : 2500
+  return weeks * rate
+}
+
+function formatPriceKr(amount) {
+  if (!Number.isFinite(amount)) return null
+  return `${amount.toLocaleString("nb-NO")} kr`
+}
+
 function isAdmin(context) {
   const user = context?.clientContext?.user || null
   const rolesRaw = user?.app_metadata?.roles || []
@@ -74,12 +91,16 @@ export const handler = async (event, context) => {
      const bookingId = inserted[0]?.id || null
 
     if (bookingId && email) {
+      const weeks = bookingWeeks(checkin, checkout)
+      const price = formatPriceKr(bookingPriceForWeeks(weeks))
+
       const text = [
         "Bookingen din er registrert.",
         "",
         `Bookingnummer: ${bookingId}`,
         `Enhet: ${unitId}`,
         `Periode: ${checkin} → ${checkout}`,
+        price ? `Pris: ${price}` : null,
         tenantName ? `Navn: ${tenantName}` : null,
         company ? `Firma: ${company}` : null
       ].filter(Boolean).join("\n")
@@ -89,6 +110,7 @@ export const handler = async (event, context) => {
         <p><strong>Bookingnummer:</strong> ${bookingId}</p>
         <p><strong>Enhet:</strong> ${unitId}</p>
         <p><strong>Periode:</strong> ${checkin} → ${checkout}</p>
+        ${price ? `<p><strong>Pris:</strong> ${price}</p>` : ""}
         ${tenantName ? `<p><strong>Navn:</strong> ${tenantName}</p>` : ""}
         ${company ? `<p><strong>Firma:</strong> ${company}</p>` : ""}
       `

@@ -406,6 +406,15 @@
         gap: 12px;
       }
 
+      .priceOutput{
+        padding: 10px 10px;
+        border: 1px dashed var(--line);
+        border-radius: 10px;
+        background: #f8fafc;
+        font-size: 14px;
+        color: #0f172a;
+      }
+
       .formActions{
         margin-top: 12px;
         display:flex;
@@ -448,6 +457,12 @@
         overflow: hidden;
         text-overflow: ellipsis;
         max-width: 360px;
+        color:#0f172a;
+      }
+
+      .priceCell{
+        text-align: right;
+        white-space: nowrap;
         color:#0f172a;
       }
 
@@ -557,6 +572,7 @@
                   <th>Utflytting</th>
                   <th>Dager igjen</th>
                   <th>Lengde nå</th>
+                  <th class="priceCell">Pris</th>
                   <th>Kommende bookinger</th>
                   <th>Handling</th>
                 </tr>
@@ -572,7 +588,7 @@
             <div class="hint">Kun admin</div>
           </div>
 
-          <p class="muted">Pris: 1-3 uker koster 2500 kr per uke. 4 uker eller mer koster 8000 kr per 4 uker (2000 kr per uke).</p>
+          <p class="muted">Pris: 1-3 uker koster 2500 kr per uke. 4 uker eller mer koster 2000 kr per uke (8000kr per måned).</p>
           <p class="muted">Bookinger må være fra mandag til mandag i hele uker. Utflytting er datoen de forlater enheten.</p>
 
           <form id="form">
@@ -607,7 +623,10 @@
                 <label>Telefon</label>
                 <input id="tenantPhone" type="tel" />
               </div>
-              <div></div>
+              <div>
+                <label>Pris</label>
+                <div class="priceOutput" id="bookingPrice">—</div>
+              </div>
             </div>
 
             <div class="formActions">
@@ -681,7 +700,7 @@
             <div class="hint">Sendes til admin</div>
           </div>
 
-          <p class="muted">Pris: 1-3 uker koster 2500 kr per uke. 4 uker eller mer koster 8000 kr per 4 uker (2000 kr per uke).</p>
+          <p class="muted">Pris: 1-3 uker koster 2500 kr per uke. 4 uker eller mer koster 2000 kr per uke (8000kr per måned).</p>
           <p class="muted">Du kan legge inn flere linjer. Admin godkjenner eller avslår per linje.</p>
           <p class="muted"><strong>Viktig:</strong> Inn- og utflytting må være mandag–mandag (hele uker).</p>
           <p class="muted">Hvis romnummer ikke vises i ønsket periode, er rommet allerede forespurt eller booket selv om det ser ledig ut i oversikten.</p>
@@ -715,6 +734,7 @@
                     <th>Firma</th>
                     <th>Leietaker</th>
                     <th>Kommentar</th>
+                    <th class="priceCell">Pris</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -784,6 +804,7 @@
       const elUnitSelect = document.getElementById("unitId")
       const elCheckin = document.getElementById("checkinDate")
       const elCheckout = document.getElementById("checkoutDate")
+      const elBookingPrice = document.getElementById("bookingPrice")
       const elReportStart = document.getElementById("reportStart")
       const elReportEnd = document.getElementById("reportEnd")
       const elReportBtn = document.getElementById("reportBtn")
@@ -867,6 +888,36 @@
       function isWholeWeeks(checkin, checkout) {
         const len = daysBetween(checkin, checkout)
         return Number.isFinite(len) && len >= 7 && len % 7 === 0
+      }
+
+      function bookingWeeks(checkin, checkout) {
+        const len = daysBetween(checkin, checkout)
+        if (!Number.isFinite(len) || len < 7 || len % 7 !== 0) return null
+        return len / 7
+      }
+
+      function bookingPriceForWeeks(weeks) {
+        if (!Number.isFinite(weeks) || weeks <= 0) return null
+        const rate = weeks >= 4 ? 2000 : 2500
+        return weeks * rate
+      }
+
+      function formatPriceKr(amount) {
+        if (!Number.isFinite(amount)) return ""
+        return amount.toLocaleString("nb-NO") + " kr"
+      }
+
+      function priceLabel(checkin, checkout) {
+        if (!isMondayIso(checkin) || !isMondayIso(checkout)) return ""
+        const weeks = bookingWeeks(checkin, checkout)
+        if (!weeks) return ""
+        return formatPriceKr(bookingPriceForWeeks(weeks))
+      }
+
+      function updateBookingPriceDisplay() {
+        if (!elBookingPrice) return
+        const price = priceLabel(elCheckin.value, elCheckout.value)
+        elBookingPrice.textContent = price || "—"
       }
 
 
@@ -992,7 +1043,9 @@
           const whoText = who ? (" " + who) : ""
           const idText = bookingIdLabel(b.id)
           const idSuffix = idText ? (" · " + idText) : ""
-          txt.textContent = fmtRange(b.checkin_date || "", b.checkout_date || "") + whoText + idSuffix
+          const priceText = priceLabel(b.checkin_date || "", b.checkout_date || "")
+          const priceSuffix = priceText ? (" · Pris: " + priceText) : ""
+          txt.textContent = fmtRange(b.checkin_date || "", b.checkout_date || "") + whoText + idSuffix + priceSuffix
 
           line.appendChild(txt)
 
@@ -1056,6 +1109,11 @@
         const tdLen = document.createElement("td")
         tdLen.textContent = lengthNow
         tr.appendChild(tdLen)
+
+        const tdPrice = document.createElement("td")
+        tdPrice.className = "priceCell"
+        tdPrice.textContent = priceLabel(row.current_checkin_date, row.current_checkout_date)
+        tr.appendChild(tdPrice)
 
         tr.appendChild(upcomingCell(row))
 
@@ -1728,6 +1786,7 @@
           elCheckin.value = ""
           elCheckout.value = ""
           fillAdminUnitSelect("", "")
+          updateBookingPriceDisplay()
 
           await loadUnits()
         } catch {
@@ -1884,6 +1943,11 @@
           comEl.addEventListener("input", () => { line.comment = comEl.value })
           tdCom.appendChild(comEl)
           tr.appendChild(tdCom)
+
+          const tdPrice = document.createElement("td")
+          tdPrice.className = "priceCell"
+          tdPrice.textContent = priceLabel(line.checkin_date, line.checkout_date)
+          tr.appendChild(tdPrice)
 
           const tdRm = document.createElement("td")
           const rmBtn = document.createElement("button")
@@ -2249,14 +2313,21 @@
       })
       document.getElementById("reqForm").addEventListener("submit", submitBookingRequest)
 
-      elCheckin.addEventListener("change", () => fillAdminUnitSelect(elCheckin.value, elCheckout.value))
-      elCheckout.addEventListener("change", () => fillAdminUnitSelect(elCheckin.value, elCheckout.value))
+      elCheckin.addEventListener("change", () => {
+        fillAdminUnitSelect(elCheckin.value, elCheckout.value)
+        updateBookingPriceDisplay()
+      })
+      elCheckout.addEventListener("change", () => {
+        fillAdminUnitSelect(elCheckin.value, elCheckout.value)
+        updateBookingPriceDisplay()
+      })
 
       document.getElementById("printWashBtn").addEventListener("click", printWashPlan)
       elReportBtn.addEventListener("click", generateBookingReport)
 
       reqLines = [newReqLine()]
       renderReqLines()
+      updateBookingPriceDisplay()
 
       initIdentity()
       identityReady.then(() => loadUnits())

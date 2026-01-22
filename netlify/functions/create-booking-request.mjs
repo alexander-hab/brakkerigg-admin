@@ -21,6 +21,28 @@ function isWholeWeeks(a, b) {
   return Number.isFinite(len) && len >= 7 && len % 7 === 0
 }
 
+function bookingWeeks(a, b) {
+  const len = daysBetween(a, b)
+  if (!Number.isFinite(len) || len < 7 || len % 7 !== 0) return null
+  return len / 7
+}
+
+function bookingPriceForWeeks(weeks) {
+  if (!Number.isFinite(weeks) || weeks <= 0) return null
+  const rate = weeks >= 4 ? 2000 : 2500
+  return weeks * rate
+}
+
+function formatPriceKr(amount) {
+  if (!Number.isFinite(amount)) return null
+  return `${amount.toLocaleString("nb-NO")} kr`
+}
+
+function priceLabelForDates(checkin, checkout) {
+  const weeks = bookingWeeks(checkin, checkout)
+  return formatPriceKr(bookingPriceForWeeks(weeks))
+}
+
 export const handler = async (event, context) => {
   try {
     if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method not allowed" }
@@ -114,11 +136,13 @@ export const handler = async (event, context) => {
         const unitId = ln.unit_id
         const checkin = ln.checkin_date
         const checkout = ln.checkout_date
+        const price = priceLabelForDates(checkin, checkout)
 
         const meta = [
           tenantName ? `Navn: ${tenantName}` : null,
           company ? `Firma: ${company}` : null,
-          comment ? `Kommentar: ${comment}` : null
+          comment ? `Kommentar: ${comment}` : null,
+          price ? `Pris: ${price}` : null
         ].filter(Boolean).join(" | ")
 
         return `${idx + 1}. Enhet: ${unitId}, ${checkin} → ${checkout}${meta ? ` (${meta})` : ""}`
@@ -143,11 +167,13 @@ export const handler = async (event, context) => {
         const unitId = ln.unit_id
         const checkin = ln.checkin_date
         const checkout = ln.checkout_date
+        const price = priceLabelForDates(checkin, checkout)
 
         const meta = [
           tenantName ? `Navn: ${tenantName}` : null,
           company ? `Firma: ${company}` : null,
-          comment ? `Kommentar: ${comment}` : null
+          comment ? `Kommentar: ${comment}` : null,
+          price ? `Pris: ${price}` : null
         ].filter(Boolean).join(" | ")
 
         return `<li><strong>${idx + 1}.</strong> Enhet ${unitId}, ${checkin} → ${checkout}${meta ? ` (${meta})` : ""}</li>`

@@ -5,6 +5,29 @@ function isIsoDate(s) {
   return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s)
 }
 
+function daysBetween(a, b) {
+  const da = new Date(a)
+  const db = new Date(b)
+  return Math.round((db - da) / (1000 * 60 * 60 * 24))
+}
+
+function bookingWeeks(a, b) {
+  const len = daysBetween(a, b)
+  if (!Number.isFinite(len) || len < 7 || len % 7 !== 0) return null
+  return len / 7
+}
+
+function bookingPriceForWeeks(weeks) {
+  if (!Number.isFinite(weeks) || weeks <= 0) return null
+  const rate = weeks >= 4 ? 2000 : 2500
+  return weeks * rate
+}
+
+function formatPriceKr(amount) {
+  if (!Number.isFinite(amount)) return null
+  return `${amount.toLocaleString("nb-NO")} kr`
+}
+
 function isAdmin(context) {
   const user = context?.clientContext?.user || null
   const rolesRaw = user?.app_metadata?.roles || []
@@ -148,6 +171,9 @@ export const handler = async (event, context) => {
 
     const recipientEmail = requesterEmail
     if (recipientEmail) {
+      const weeks = bookingWeeks(checkin, checkout)
+      const price = formatPriceKr(bookingPriceForWeeks(weeks))
+      
       const text = [
         "Bookingforespørselen din er godkjent.",
         "",
@@ -155,6 +181,7 @@ export const handler = async (event, context) => {
         `Forespørselsnummer: ${ln.request_id || ""}`,
         `Enhet: ${ln.unit_id}`,
         `Periode: ${checkin} → ${checkout}`,
+        price ? `Pris: ${price}` : null,
         ln.tenant_name ? `Navn: ${ln.tenant_name}` : null,
         ln.company ? `Firma: ${ln.company}` : null
       ].filter(Boolean).join("\n")
@@ -165,6 +192,7 @@ export const handler = async (event, context) => {
         <p><strong>Forespørselsnummer:</strong> ${ln.request_id || ""}</p>
         <p><strong>Enhet:</strong> ${ln.unit_id}</p>
         <p><strong>Periode:</strong> ${checkin} → ${checkout}</p>
+        ${price ? `<p><strong>Pris:</strong> ${price}</p>` : ""}
         ${ln.tenant_name ? `<p><strong>Navn:</strong> ${ln.tenant_name}</p>` : ""}
         ${ln.company ? `<p><strong>Firma:</strong> ${ln.company}</p>` : ""}
       `
