@@ -131,6 +131,7 @@ export const handler = async (event, context) => {
         linesText,
         "",
         "Påminnelse: Kontrakt må være signert før forespørselen kan godkjennes.",
+        "Kontrakten skal sendes til steffan@hab.no.",
         "",
         "Vi tar kontakt så snart forespørselen er behandlet."
       ].join("\n")
@@ -157,6 +158,7 @@ export const handler = async (event, context) => {
         <p><strong>Forespørselsnummer:</strong> ${requestId}</p>
         <ul>${htmlLines}</ul>
         <p><strong>Påminnelse:</strong> Kontrakt må være signert før forespørselen kan godkjennes.</p>
+        <p><strong>Kontrakt:</strong> Send signert kontrakt til steffan@hab.no.</p>
         <p>Vi tar kontakt så snart forespørselen er behandlet.</p>
       `
 

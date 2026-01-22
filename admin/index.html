@@ -127,6 +127,22 @@
         box-shadow: var(--shadow2);
       }
 
+      .pageFooter{
+        display:flex;
+        justify-content:center;
+        padding: 6px 22px 18px;
+      }
+
+      .footerCredit{
+        font-size: 10px;
+        color: var(--muted);
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 4px 10px;
+        box-shadow: var(--shadow2);
+      }
+
       .btn:hover{ filter: brightness(0.98); }
       .btn:active{ transform: translateY(1px); }
 
@@ -667,8 +683,8 @@
 
           <p class="muted">Pris: 1-3 uker koster 2500 kr per uke. 4 uker eller mer koster 8000 kr per 4 uker (2000 kr per uke).</p>
           <p class="muted">Du kan legge inn flere linjer. Admin godkjenner eller avslår per linje.</p>
-          <p class="muted">Bookinger må være fra mandag til mandag i hele uker.</p>
-          <p class="muted">Dersom romnummer ikke kommer opp i ønsket leieperiode selv om den ser ledig ut i oversikten kan den allerede være forespurt av noen andre.</p>
+          <p class="muted"><strong>Viktig:</strong> Inn- og utflytting må være mandag–mandag (hele uker).</p>
+          <p class="muted">Hvis romnummer ikke vises i ønsket periode, er rommet allerede forespurt eller booket selv om det ser ledig ut i oversikten.</p>
           <div class="reqSuccess" id="reqSuccess">Forespørsel sendt</div>
           <div class="contractNotice">Fyll ut og send inn signert kontrakt til steffan@hab.no.</div>
           <div class="contractActions">
@@ -741,6 +757,10 @@
 
       </div>
     </div>
+
+    <footer class="pageFooter">
+      <div class="footerCredit">Utviklet av Alexander Buer</div>
+    </footer>
 
     <script>
       const elMsg = document.getElementById("msg")
