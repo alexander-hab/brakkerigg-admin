@@ -1521,6 +1521,22 @@
         return list.filter((b) => overlaps(b.checkin_date, b.checkout_date, startIso, endIso))
       }
 
+      async function fetchBookingsForReport(startIso, endIso) {
+        await identityReady
+        const headers = await authHeaders({ "Content-Type": "application/json" })
+        const res = await fetch("/.netlify/functions/report-bookings", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ start: startIso, end: endIso })
+        })
+        if (!res.ok) {
+          const t = await res.text()
+          throw new Error(t || "Klarte ikke å hente rapportdata")
+        }
+        const payload = await res.json()
+        return Array.isArray(payload?.bookings) ? payload.bookings : []
+      }
+
       function bookingReportLine(booking) {
         const parts = []
         if (booking.unit_code) parts.push("Enhet " + booking.unit_code)
@@ -1568,7 +1584,13 @@
             return
           }
 
-          const bookings = collectBookingsForReport(startIso, endIso)
+          let bookings = []
+          try {
+            bookings = await fetchBookingsForReport(startIso, endIso)
+          } catch (err) {
+            setMsg("Klarte ikke å hente historiske bookinger. Bruker lokal oversikt.")
+            bookings = collectBookingsForReport(startIso, endIso)
+          }
           bookings.sort((a, b) => {
             const dateCmp = String(a.checkin_date || "").localeCompare(String(b.checkin_date || ""))
             if (dateCmp !== 0) return dateCmp
