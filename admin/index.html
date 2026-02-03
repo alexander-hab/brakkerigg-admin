@@ -235,6 +235,13 @@
         gap: 8px;
       }
 
+      .warnText{
+        margin-top: 8px;
+        color: #b91c1c;
+        font-size: 12px;
+        display: none;
+      }
+
       .mapWrap{ position: relative; width: 100%; max-width: 1100px; }
       .mapImg{
         width: 100%;
@@ -588,7 +595,7 @@
             <div class="hint">Kun admin</div>
           </div>
 
-          <p class="muted">Pris: 1-3 uker koster 2500 kr per uke. 4 uker eller mer koster 2000 kr per uke (8000kr per måned).</p>
+          <p class="muted">Pris: 1-3 uker koster 2500 kr per uke. 4 uker eller mer koster 2100 kr per uke (8400kr per måned).</p>
           <p class="muted">Bookinger må være fra mandag til mandag i hele uker. Utflytting er datoen de forlater enheten.</p>
 
           <form id="form">
@@ -700,7 +707,7 @@
             <div class="hint">Sendes til admin</div>
           </div>
 
-          <p class="muted">Pris: 1-3 uker koster 2500 kr per uke. 4 uker eller mer koster 2000 kr per uke (8000kr per måned).</p>
+          <p class="muted">Pris: 1-3 uker koster 2500 kr per uke. 4 uker eller mer koster 2100 kr per uke (8400kr per måned).</p>
           <p class="muted">Du kan legge inn flere linjer. Admin godkjenner eller avslår per linje.</p>
           <p class="muted"><strong>Viktig:</strong> Inn- og utflytting må være mandag–mandag (hele uker).</p>
           <p class="muted">Hvis romnummer ikke vises i ønsket periode, er rommet allerede forespurt eller booket selv om det ser ledig ut i oversikten.</p>
@@ -724,6 +731,7 @@
               </div>
             </div>
 
+            <div class="warnText" id="reqDateWarning">NB bookinger kan bare gjøres fra Mandag-Mandag.</div>
             <div style="margin-top:12px" class="tableWrap">
               <table class="reqTable">
                 <thead>
@@ -812,6 +820,7 @@
       const elReqEmail = document.getElementById("reqEmail")
       const elReqPhone = document.getElementById("reqPhone")
       const elReqLinesTbody = document.getElementById("reqLinesTbody")
+      const elReqDateWarning = document.getElementById("reqDateWarning")
 
       let isAdmin = false
       let unitRows = []
@@ -898,7 +907,7 @@
 
       function bookingPriceForWeeks(weeks) {
         if (!Number.isFinite(weeks) || weeks <= 0) return null
-        const rate = weeks >= 4 ? 2000 : 2500
+        const rate = weeks >= 4 ? 2100 : 2500
         return weeks * rate
       }
 
@@ -1986,6 +1995,18 @@
 
           elReqLinesTbody.appendChild(tr)
         }
+        
+        updateReqDateWarning()
+      }
+
+      function updateReqDateWarning() {
+        if (!elReqDateWarning) return
+        const hasInvalid = reqLines.some((line) => {
+          if (!line.checkin_date || !line.checkout_date) return false
+          if (!isMondayIso(line.checkin_date) || !isMondayIso(line.checkout_date)) return true
+          return !isWholeWeeks(line.checkin_date, line.checkout_date)
+        })
+        elReqDateWarning.style.display = hasInvalid ? "block" : "none"
       }
 
       function isUnitIdAvailableForLine(unitId, checkin, checkout) {

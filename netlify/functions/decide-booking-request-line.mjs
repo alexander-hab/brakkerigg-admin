@@ -19,7 +19,7 @@ function bookingWeeks(a, b) {
 
 function bookingPriceForWeeks(weeks) {
   if (!Number.isFinite(weeks) || weeks <= 0) return null
-  const rate = weeks >= 4 ? 2000 : 2500
+  const rate = weeks >= 4 ? 2100 : 2500
   return weeks * rate
 }
 

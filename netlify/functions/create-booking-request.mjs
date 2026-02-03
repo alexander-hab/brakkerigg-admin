@@ -29,7 +29,7 @@ function bookingWeeks(a, b) {
 
 function bookingPriceForWeeks(weeks) {
   if (!Number.isFinite(weeks) || weeks <= 0) return null
-  const rate = weeks >= 4 ? 2000 : 2500
+  const rate = weeks >= 4 ? 2100 : 2500
   return weeks * rate
 }
 
@@ -151,7 +151,7 @@ export const handler = async (event, context) => {
       const text = [
         "Vi har mottatt bookingforespørselen din.",
         "",
-        `Forespørselsnummer: ${requestId}`,
+        `Bookingnummer: ${requestId}`,
         linesText,
         "",
         "Påminnelse: Kontrakt må være signert før forespørselen kan godkjennes.",
@@ -181,7 +181,7 @@ export const handler = async (event, context) => {
 
       const html = `
         <p>Vi har mottatt bookingforespørselen din.</p>
-        <p><strong>Forespørselsnummer:</strong> ${requestId}</p>
+        <p><strong>Bookingnummer:</strong> ${requestId}</p>
         <ul>${htmlLines}</ul>
         <p><strong>Påminnelse:</strong> Kontrakt må være signert før forespørselen kan godkjennes.</p>
         <p><strong>Kontrakt:</strong> Send signert kontrakt til steffan@hab.no.</p>
