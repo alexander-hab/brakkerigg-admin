@@ -171,6 +171,13 @@
         box-shadow: none;
       }
 
+       .statusCell{
+        display:flex;
+        align-items:center;
+        gap:8px;
+        flex-wrap:wrap;
+      }
+
       .msg{
         margin: 0 0 14px 0;
         padding: 10px 12px;
@@ -572,7 +579,6 @@
                 <tr>
                   <th>Enhet</th>
                   <th>Status</th>
-                  <th class="adminOnly">Rediger</th>
                   <th class="adminOnly">Booking nr</th>
                   <th>Leietaker nå</th>
                   <th>Firma</th>
@@ -1215,20 +1221,17 @@
         tr.appendChild(tdUnit)
 
         const tdStatus = document.createElement("td")
+        tdStatus.className = "statusCell" 
         tdStatus.appendChild(statusPill(row))
-        tr.appendChild(tdStatus)
-
-        const tdEdit = document.createElement("td")
-        tdEdit.className = "adminOnly"
         if (isAdmin) {
           const editBtn = document.createElement("button")
           editBtn.type = "button"
           editBtn.className = "btn btnSmall btnGhost"
           editBtn.textContent = "Rediger"
           editBtn.addEventListener("click", () => openUnitBookingEditor(row))
-          tdEdit.appendChild(editBtn)
+          tdStatus.appendChild(editBtn)
         }
-        tr.appendChild(tdEdit)
+        tr.appendChild(tdStatus)
 
         const tdBooking = document.createElement("td")
         tdBooking.className = "adminOnly"
