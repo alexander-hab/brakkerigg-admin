@@ -61,10 +61,12 @@ export const handler = async (event, context) => {
         r.requester_email,
         r.requested_by_email,
         r.requester_phone,
+        u.unit_code,
         rl.checkin_date::text as checkin_date,
         rl.checkout_date::text as checkout_date
       from booking_request_lines rl
       join booking_requests r on r.id = rl.request_id
+      join units u on u.id = rl.unit_id
       where rl.id = ${lineId}
       limit 1;
     `
@@ -74,6 +76,7 @@ export const handler = async (event, context) => {
 
     const decidedByUserId = String(user.id || user.sub || "").trim() || null
     const requesterEmail = String(ln.requester_email || ln.requested_by_email || "").trim() || null
+    const unitLabel = String(ln.unit_code || ln.unit_id || "").trim()
 
     if (action === "reject") {
       await sql`
@@ -89,8 +92,8 @@ export const handler = async (event, context) => {
         const text = [
           "Beklager, forespørselen din er avslått.",
           "",
-          `Forespørselsnummer: ${ln.request_id || ""}`,
-          `Enhet: ${ln.unit_id}`,
+          `Bookingnummer: ${ln.request_id || ""}`,
+          `Enhet: ${unitLabel}`,
           `Periode: ${ln.checkin_date} → ${ln.checkout_date}`,
           "",
           "Ta gjerne kontakt om du ønsker andre datoer."
@@ -98,8 +101,8 @@ export const handler = async (event, context) => {
 
         const html = `
           <p>Beklager, forespørselen din er avslått.</p>
-          <p><strong>Forespørselsnummer:</strong> ${ln.request_id || ""}</p>
-          <p><strong>Enhet:</strong> ${ln.unit_id}</p>
+          <p><strong>Bookingnummer:</strong> ${ln.request_id || ""}</p>
+          <p><strong>Enhet:</strong> ${unitLabel}</p>
           <p><strong>Periode:</strong> ${ln.checkin_date} → ${ln.checkout_date}</p>
           <p>Ta gjerne kontakt om du ønsker andre datoer.</p>
         `
@@ -107,7 +110,7 @@ export const handler = async (event, context) => {
         try {
           await sendEmailjsEmail({
             to: recipientEmail,
-            subject: `Forespørsel avslått (#${ln.request_id || ""})`,
+             subject: `Booking avslått (#${ln.request_id || ""})`,
             text,
             html,
             templateId: process.env.EMAILJS_TEMPLATE_ID_REJECTED
@@ -177,9 +180,8 @@ export const handler = async (event, context) => {
       const text = [
         "Bookingforespørselen din er godkjent.",
         "",
-        `Bookingnummer: ${bookingId}`,
-        `Forespørselsnummer: ${ln.request_id || ""}`,
-        `Enhet: ${ln.unit_id}`,
+        `Bookingnummer: ${ln.request_id || ""}`,
+        `Enhet: ${unitLabel}`,
         `Periode: ${checkin} → ${checkout}`,
         price ? `Pris: ${price}` : null,
         ln.tenant_name ? `Navn: ${ln.tenant_name}` : null,
@@ -188,9 +190,8 @@ export const handler = async (event, context) => {
 
       const html = `
         <p>Bookingforespørselen din er godkjent.</p>
-        <p><strong>Bookingnummer:</strong> ${bookingId}</p>
-        <p><strong>Forespørselsnummer:</strong> ${ln.request_id || ""}</p>
-        <p><strong>Enhet:</strong> ${ln.unit_id}</p>
+        <p><strong>Bookingnummer:</strong> ${ln.request_id || ""}</p>
+        <p><strong>Enhet:</strong> ${unitLabel}</p>
         <p><strong>Periode:</strong> ${checkin} → ${checkout}</p>
         ${price ? `<p><strong>Pris:</strong> ${price}</p>` : ""}
         ${ln.tenant_name ? `<p><strong>Navn:</strong> ${ln.tenant_name}</p>` : ""}
@@ -200,7 +201,7 @@ export const handler = async (event, context) => {
       try {
         await sendEmailjsEmail({
           to: recipientEmail,
-          subject: `Booking godkjent (#${bookingId})`,
+          subject: `Booking godkjent (#${ln.request_id || ""})`,
           text,
           html,
           templateId: process.env.EMAILJS_TEMPLATE_ID_APPROVED

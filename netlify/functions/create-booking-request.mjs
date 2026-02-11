@@ -129,11 +129,18 @@ export const handler = async (event, context) => {
 
     const recipientEmail = requesterEmail || String(user.email || "").trim() || null
     if (recipientEmail) {
+        const requestedUnitIds = [...new Set(lines.map(ln => Number(ln.unit_id)).filter(Number.isFinite))]
+      const units = requestedUnitIds.length > 0
+        ? await sql`select id, unit_code from units where id = any(${requestedUnitIds});`
+        : []
+      const unitCodeById = new Map(units.map(u => [Number(u.id), String(u.unit_code || "").trim()]))
+
       const linesText = lines.map((ln, idx) => {
         const tenantName = String(ln.tenant_name || "").trim()
         const company = String(ln.company || "").trim()
         const comment = String(ln.comment || "").trim()
-        const unitId = ln.unit_id
+        const unitId = Number(ln.unit_id)
+        const unitLabel = unitCodeById.get(unitId) || String(ln.unit_id || "").trim()
         const checkin = ln.checkin_date
         const checkout = ln.checkout_date
         const price = priceLabelForDates(checkin, checkout)
@@ -145,7 +152,7 @@ export const handler = async (event, context) => {
           price ? `Pris: ${price}` : null
         ].filter(Boolean).join(" | ")
 
-        return `${idx + 1}. Enhet: ${unitId}, ${checkin} → ${checkout}${meta ? ` (${meta})` : ""}`
+        return `${idx + 1}. Enhet: ${unitLabel}, ${checkin} → ${checkout}${meta ? ` (${meta})` : ""}`
       }).join("\n")
 
       const text = [
@@ -164,7 +171,8 @@ export const handler = async (event, context) => {
         const tenantName = String(ln.tenant_name || "").trim()
         const company = String(ln.company || "").trim()
         const comment = String(ln.comment || "").trim()
-        const unitId = ln.unit_id
+        const unitId = Number(ln.unit_id)
+        const unitLabel = unitCodeById.get(unitId) || String(ln.unit_id || "").trim()
         const checkin = ln.checkin_date
         const checkout = ln.checkout_date
         const price = priceLabelForDates(checkin, checkout)
@@ -176,7 +184,7 @@ export const handler = async (event, context) => {
           price ? `Pris: ${price}` : null
         ].filter(Boolean).join(" | ")
 
-        return `<li><strong>${idx + 1}.</strong> Enhet ${unitId}, ${checkin} → ${checkout}${meta ? ` (${meta})` : ""}</li>`
+       return `<li><strong>${idx + 1}.</strong> Enhet ${unitLabel}, ${checkin} → ${checkout}${meta ? ` (${meta})` : ""}</li>`
       }).join("")
 
       const html = `
