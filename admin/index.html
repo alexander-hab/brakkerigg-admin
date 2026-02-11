@@ -572,6 +572,7 @@
                 <tr>
                   <th>Enhet</th>
                   <th>Status</th>
+                  <th class="adminOnly">Rediger</th>
                   <th class="adminOnly">Booking nr</th>
                   <th>Leietaker nå</th>
                   <th>Firma</th>
@@ -1028,7 +1029,116 @@
         return "Booking #" + bookingId
       }
 
+      function roomBookings(row) {
+        const out = []
+        if (row?.current_booking_id) {
+          out.push({
+            id: row.current_booking_id,
+            checkin_date: row.current_checkin_date || "",
+            checkout_date: row.current_checkout_date || "",
+            tenant_name: row.current_tenant_name || "",
+            company: row.current_company || "",
+            tenant_email: row.current_tenant_email || "",
+            tenant_phone: row.current_tenant_phone || ""
+          })
+        }
 
+        const up = getUpcoming(row)
+        for (const b of up) {
+          if (!b?.id) continue
+          if (out.some(x => Number(x.id) === Number(b.id))) continue
+          out.push({
+            id: b.id,
+            checkin_date: b.checkin_date || "",
+            checkout_date: b.checkout_date || "",
+            tenant_name: b.tenant_name || "",
+            company: b.company || "",
+            tenant_email: b.tenant_email || "",
+            tenant_phone: b.tenant_phone || ""
+          })
+        }
+
+        out.sort((a, b) => String(a.checkin_date || "").localeCompare(String(b.checkin_date || "")))
+        return out
+      }
+
+      async function updateBooking(payload) {
+        await identityReady
+        const headers = await authHeaders({ "Content-Type": "application/json" })
+        const res = await fetch("/.netlify/functions/update-booking", {
+          method: "POST",
+          headers,
+          body: JSON.stringify(payload)
+        })
+
+        if (res.status === 401 || res.status === 403) {
+          const t = await res.text()
+          throw new Error(t || "Ingen tilgang")
+        }
+        if (res.status === 409) {
+          throw new Error("Konflikt. Enheten er allerede booket i perioden")
+        }
+        if (!res.ok) {
+          const t = await res.text()
+          throw new Error(t || ("Feil ved oppdatering. Status " + res.status))
+        }
+      }
+
+      async function openUnitBookingEditor(row) {
+        if (!isAdmin) return
+
+        const bookings = roomBookings(row)
+        if (bookings.length === 0) {
+          setMsg("Ingen aktive eller kommende bookinger i dette rommet")
+          return
+        }
+
+        const listText = bookings
+          .map(b => `${b.id}: ${fmtRange(b.checkin_date, b.checkout_date)} ${bookingWho(b) || ""}`.trim())
+          .join("\n")
+
+        const pick = prompt(`Velg bookingnummer for rom ${row.unit_code}:\n${listText}`)
+        if (!pick) return
+
+        const bookingId = Number(String(pick).trim())
+        const target = bookings.find(b => Number(b.id) === bookingId)
+        if (!target) {
+          setMsg("Fant ikke bookingnummeret i dette rommet")
+          return
+        }
+
+        const checkin = prompt("Innflytting (YYYY-MM-DD)", target.checkin_date || "")
+        if (checkin === null) return
+        const checkout = prompt("Utflytting (YYYY-MM-DD)", target.checkout_date || "")
+        if (checkout === null) return
+        const tenantName = prompt("Leietaker", target.tenant_name || "")
+        if (tenantName === null) return
+        const company = prompt("Firma", target.company || "")
+        if (company === null) return
+        const tenantEmail = prompt("E-post", target.tenant_email || "")
+        if (tenantEmail === null) return
+        const tenantPhone = prompt("Telefon", target.tenant_phone || "")
+        if (tenantPhone === null) return
+
+        try {
+          await updateBooking({
+            booking_id: bookingId,
+            checkin_date: String(checkin).trim(),
+            checkout_date: String(checkout).trim(),
+            tenant_name: String(tenantName).trim(),
+            company: String(company).trim(),
+            tenant_email: String(tenantEmail).trim(),
+            tenant_phone: String(tenantPhone).trim()
+          })
+
+          setMsg("Booking oppdatert")
+          await loadUnits()
+        } catch (err) {
+          setMsg(err?.message || "Feil ved oppdatering")
+        }
+      }
+
+      
       function clearTable() {
         elTbody.innerHTML = ""
       }
@@ -1088,6 +1198,18 @@
         const tdStatus = document.createElement("td")
         tdStatus.appendChild(statusPill(row))
         tr.appendChild(tdStatus)
+
+        const tdEdit = document.createElement("td")
+        tdEdit.className = "adminOnly"
+        if (isAdmin) {
+          const editBtn = document.createElement("button")
+          editBtn.type = "button"
+          editBtn.className = "btn btnSmall btnGhost"
+          editBtn.textContent = "Rediger"
+          editBtn.addEventListener("click", () => openUnitBookingEditor(row))
+          tdEdit.appendChild(editBtn)
+        }
+        tr.appendChild(tdEdit)
 
         const tdBooking = document.createElement("td")
         tdBooking.className = "adminOnly"

@@ -180,7 +180,7 @@ export const handler = async (event, context) => {
       const text = [
         "Bookingforespørselen din er godkjent.",
         "",
-        `Bookingnummer: ${ln.request_id || ""}`,
+        `Bookingnummer: ${bookingId}`,
         `Enhet: ${unitLabel}`,
         `Periode: ${checkin} → ${checkout}`,
         price ? `Pris: ${price}` : null,
@@ -190,7 +190,7 @@ export const handler = async (event, context) => {
 
       const html = `
         <p>Bookingforespørselen din er godkjent.</p>
-        <p><strong>Bookingnummer:</strong> ${ln.request_id || ""}</p>
+        <p><strong>Bookingnummer:</strong> ${bookingId}</p>
         <p><strong>Enhet:</strong> ${unitLabel}</p>
         <p><strong>Periode:</strong> ${checkin} → ${checkout}</p>
         ${price ? `<p><strong>Pris:</strong> ${price}</p>` : ""}
@@ -201,7 +201,7 @@ export const handler = async (event, context) => {
       try {
         await sendEmailjsEmail({
           to: recipientEmail,
-          subject: `Booking godkjent (#${ln.request_id || ""})`,
+          subject: `Booking godkjent (#${bookingId})`,
           text,
           html,
           templateId: process.env.EMAILJS_TEMPLATE_ID_APPROVED
