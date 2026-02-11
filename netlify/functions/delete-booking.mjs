@@ -1,11 +1,9 @@
 import { neon } from "@netlify/neon"
+import { userIsAdmin } from "./_roles.mjs"
 
 function isAdminFromContext(context) {
-  const user = context?.clientContext?.user
-  const roles = user?.app_metadata?.roles
-  if (!user || !Array.isArray(roles)) return false
-  const lower = roles.map((r) => String(r).toLowerCase())
-  return lower.includes("admin")
+  const user = context?.clientContext?.user || null
+  return userIsAdmin(user)
 }
 
 function text(statusCode, msg) {

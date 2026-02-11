@@ -1,10 +1,9 @@
 import { neon } from "@netlify/neon"
+import { userIsAdmin } from "./_roles.mjs"
 
 function getViewer(context) {
   const user = context?.clientContext?.user || null
-  const rolesRaw = user?.app_metadata?.roles || []
-  const roles = Array.isArray(rolesRaw) ? rolesRaw.map(r => String(r).toLowerCase()) : []
-  const isAdmin = Boolean(user) && roles.includes("admin")
+  const isAdmin = userIsAdmin(user)
   return {
     user,
     email: user?.email || "",

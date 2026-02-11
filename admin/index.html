@@ -826,6 +826,25 @@
       let isAdmin = false
       let unitRows = []
 
+      function toRoleArray(value) {
+        if (Array.isArray(value)) return value
+        if (typeof value === "string") {
+          return value.split(/[\s,]+/).map((r) => r.trim()).filter(Boolean)
+        }
+        return []
+      }
+
+      function userIsAdmin(user) {
+        if (!user || typeof user !== "object") return false
+        const roles = [
+          ...toRoleArray(user?.app_metadata?.roles),
+          ...toRoleArray(user?.app_metadata?.authorization?.roles),
+          ...toRoleArray(user?.user_metadata?.roles),
+          ...toRoleArray(user?.roles)
+        ].map((role) => String(role).toLowerCase())
+        return roles.includes("admin")
+      }
+
       const CLEAN_WEEKDAY = 1
       const BASE_WASHDAY_ISO = "2026-01-26"
       const BASE_FLOOR = 1
@@ -1844,6 +1863,11 @@
           }
 
           const payload = await res.json()
+          const serverAdmin = Boolean(payload?.viewer?.is_admin)
+          if (serverAdmin !== isAdmin) {
+            isAdmin = serverAdmin
+            applyRoleUi()
+          }
           const rows = Array.isArray(payload)
             ? payload
             : (Array.isArray(payload?.rows) ? payload.rows : [])
@@ -2451,9 +2475,7 @@
 
           elWho.textContent = user.email || ""
 
-          const rolesRaw = user?.app_metadata?.roles || []
-          const roles = Array.isArray(rolesRaw) ? rolesRaw.map(r => String(r).toLowerCase()) : []
-          isAdmin = roles.includes("admin")
+          isAdmin = userIsAdmin(user)
 
           elReqEmail.value = user.email || ""
           applyRoleUi()

@@ -1,4 +1,5 @@
 import { neon } from "@netlify/neon"
+import { userIsAdmin } from "./_roles.mjs"
 import { sendEmailjsEmail } from "./_emailjs.mjs"
 
 function isIsoDate(s) {
@@ -40,9 +41,7 @@ function formatPriceKr(amount) {
 
 function isAdmin(context) {
   const user = context?.clientContext?.user || null
-  const rolesRaw = user?.app_metadata?.roles || []
-  const roles = Array.isArray(rolesRaw) ? rolesRaw.map(r => String(r).toLowerCase()) : []
-  return Boolean(user) && roles.includes("admin")
+  return userIsAdmin(user)
 }
 
 export const handler = async (event, context) => {
