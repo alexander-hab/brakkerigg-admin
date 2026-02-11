@@ -514,6 +514,50 @@
         width: fit-content;
       }
 
+       .modalOverlay{
+        position: fixed;
+        inset: 0;
+        background: rgba(15,23,42,0.45);
+        display:none;
+        align-items:center;
+        justify-content:center;
+        z-index: 50;
+        padding: 18px;
+      }
+
+      .modalOverlay.open{
+        display:flex;
+      }
+
+      .modalCard{
+        width: min(720px, 100%);
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+        padding: 14px;
+      }
+
+      .modalTitle{
+        margin: 0;
+        font-size: 16px;
+        font-weight: 900;
+      }
+
+      .modalHint{
+        margin: 4px 0 12px 0;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .modalError{
+        margin: 8px 0 0 0;
+        font-size: 12px;
+        color: #b91c1c;
+        font-weight: 700;
+        min-height: 16px;
+      }
+
       @media (max-width: 860px){
         .formGrid{ grid-template-columns: 1fr; }
         .actions{ justify-content:flex-start; }
@@ -793,6 +837,52 @@
       </div>
     </div>
 
+    <div class="modalOverlay" id="bookingEditModal" aria-hidden="true">
+      <div class="modalCard">
+        <h3 class="modalTitle">Rediger booking</h3>
+        <p class="modalHint" id="bookingEditHint">Velg booking og oppdater feltene før du bekrefter.</p>
+        <form id="bookingEditForm">
+          <div class="formGrid">
+            <div>
+              <label for="editBookingSelect">Booking</label>
+              <select id="editBookingSelect"></select>
+            </div>
+            <div>
+              <label for="editCompany">Firma</label>
+              <input id="editCompany" />
+            </div>
+            <div>
+              <label for="editTenantName">Leietaker</label>
+              <input id="editTenantName" />
+            </div>
+            <div>
+              <label for="editCheckoutDate">Utflytting (forleng ved behov)</label>
+              <input id="editCheckoutDate" type="date" />
+            </div>
+            <div>
+              <label for="editCheckinDate">Innflytting</label>
+              <input id="editCheckinDate" type="date" />
+            </div>
+            <div>
+              <label for="editTenantEmail">E-post</label>
+              <input id="editTenantEmail" type="email" />
+            </div>
+            <div>
+              <label for="editTenantPhone">Telefon</label>
+              <input id="editTenantPhone" type="tel" />
+            </div>
+          </div>
+
+          <div class="modalError" id="bookingEditError"></div>
+
+          <div class="formActions">
+            <button class="btn btnGhost" type="button" id="bookingEditCancelBtn">Avbryt</button>
+            <button class="btn btnPrimary" type="submit" id="bookingEditConfirmBtn">Bekreft</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <footer class="pageFooter">
       <div class="footerCredit">Utviklet av Alexander Buer</div>
     </footer>
@@ -829,8 +919,22 @@
       const elReqLinesTbody = document.getElementById("reqLinesTbody")
       const elReqDateWarning = document.getElementById("reqDateWarning")
 
+      const elBookingEditModal = document.getElementById("bookingEditModal")
+      const elBookingEditForm = document.getElementById("bookingEditForm")
+      const elEditBookingSelect = document.getElementById("editBookingSelect")
+      const elEditBookingHint = document.getElementById("bookingEditHint")
+      const elEditTenantName = document.getElementById("editTenantName")
+      const elEditCompany = document.getElementById("editCompany")
+      const elEditCheckinDate = document.getElementById("editCheckinDate")
+      const elEditCheckoutDate = document.getElementById("editCheckoutDate")
+      const elEditTenantEmail = document.getElementById("editTenantEmail")
+      const elEditTenantPhone = document.getElementById("editTenantPhone")
+      const elBookingEditError = document.getElementById("bookingEditError")
+      const elBookingEditCancelBtn = document.getElementById("bookingEditCancelBtn")
+
       let isAdmin = false
       let unitRows = []
+      let bookingEditContext = null
 
       function toRoleArray(value) {
         if (Array.isArray(value)) return value
@@ -1109,6 +1213,47 @@
         }
       }
 
+      function closeBookingEditor() {
+        bookingEditContext = null
+        elBookingEditModal.classList.remove("open")
+        elBookingEditModal.setAttribute("aria-hidden", "true")
+        elBookingEditError.textContent = ""
+      }
+
+      function fillBookingEditorFields(bookingId) {
+        if (!bookingEditContext) return
+        const target = bookingEditContext.bookings.find((b) => Number(b.id) === Number(bookingId))
+        if (!target) return
+
+        elEditTenantName.value = target.tenant_name || ""
+        elEditCompany.value = target.company || ""
+        elEditCheckinDate.value = target.checkin_date || ""
+        elEditCheckoutDate.value = target.checkout_date || ""
+        elEditTenantEmail.value = target.tenant_email || ""
+        elEditTenantPhone.value = target.tenant_phone || ""
+        elBookingEditError.textContent = ""
+      }
+
+      function openBookingEditorModal(row, bookings) {
+        bookingEditContext = { row, bookings }
+        elEditBookingHint.textContent = `Rom ${row.unit_code}: velg booking og oppdater feltene før du bekrefter.`
+        elEditBookingSelect.innerHTML = ""
+
+        for (const b of bookings) {
+          const opt = document.createElement("option")
+          opt.value = String(b.id)
+          const who = bookingWho(b)
+          const whoText = who ? ` · ${who}` : ""
+          opt.textContent = `#${b.id} · ${fmtRange(b.checkin_date, b.checkout_date)}${whoText}`
+          elEditBookingSelect.appendChild(opt)
+        }
+
+        if (bookings[0]) fillBookingEditorFields(bookings[0].id)
+
+        elBookingEditModal.classList.add("open")
+        elBookingEditModal.setAttribute("aria-hidden", "false")
+      }
+
       async function openUnitBookingEditor(row) {
         if (!isAdmin) return
 
@@ -1118,48 +1263,37 @@
           return
         }
 
-        const listText = bookings
-          .map(b => `${b.id}: ${fmtRange(b.checkin_date, b.checkout_date)} ${bookingWho(b) || ""}`.trim())
-          .join("\n")
+        openBookingEditorModal(row, bookings)
+      }
 
-        const pick = prompt(`Velg bookingnummer for rom ${row.unit_code}:\n${listText}`)
-        if (!pick) return
+        async function submitBookingEditor(e) {
+        e.preventDefault()
+        if (!bookingEditContext) return
 
-        const bookingId = Number(String(pick).trim())
-        const target = bookings.find(b => Number(b.id) === bookingId)
-        if (!target) {
-          setMsg("Fant ikke bookingnummeret i dette rommet")
+        const bookingId = Number(elEditBookingSelect.value)
+        if (!Number.isFinite(bookingId) || bookingId <= 0) {
+          elBookingEditError.textContent = "Velg en booking først"
           return
         }
 
-        const checkin = prompt("Innflytting (YYYY-MM-DD)", target.checkin_date || "")
-        if (checkin === null) return
-        const checkout = prompt("Utflytting (YYYY-MM-DD)", target.checkout_date || "")
-        if (checkout === null) return
-        const tenantName = prompt("Leietaker", target.tenant_name || "")
-        if (tenantName === null) return
-        const company = prompt("Firma", target.company || "")
-        if (company === null) return
-        const tenantEmail = prompt("E-post", target.tenant_email || "")
-        if (tenantEmail === null) return
-        const tenantPhone = prompt("Telefon", target.tenant_phone || "")
-        if (tenantPhone === null) return
+        const payload = {
+          booking_id: bookingId,
+          checkin_date: String(elEditCheckinDate.value || "").trim(),
+          checkout_date: String(elEditCheckoutDate.value || "").trim(),
+          tenant_name: String(elEditTenantName.value || "").trim(),
+          company: String(elEditCompany.value || "").trim(),
+          tenant_email: String(elEditTenantEmail.value || "").trim(),
+          tenant_phone: String(elEditTenantPhone.value || "").trim()
+        }
 
         try {
-          await updateBooking({
-            booking_id: bookingId,
-            checkin_date: String(checkin).trim(),
-            checkout_date: String(checkout).trim(),
-            tenant_name: String(tenantName).trim(),
-            company: String(company).trim(),
-            tenant_email: String(tenantEmail).trim(),
-            tenant_phone: String(tenantPhone).trim()
-          })
+          await updateBooking(payload)
+          closeBookingEditor()
 
           setMsg("Booking oppdatert")
           await loadUnits()
         } catch (err) {
-          setMsg(err?.message || "Feil ved oppdatering")
+          elBookingEditError.textContent = err?.message || "Feil ved oppdatering"
         }
       }
 
@@ -2514,6 +2648,16 @@
 
       document.getElementById("printWashBtn").addEventListener("click", printWashPlan)
       elReportBtn.addEventListener("click", generateBookingReport)
+
+      elEditBookingSelect.addEventListener("change", () => fillBookingEditorFields(elEditBookingSelect.value))
+      elBookingEditCancelBtn.addEventListener("click", closeBookingEditor)
+      elBookingEditForm.addEventListener("submit", submitBookingEditor)
+      elBookingEditModal.addEventListener("click", (e) => {
+        if (e.target === elBookingEditModal) closeBookingEditor()
+      })
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && bookingEditContext) closeBookingEditor()
+      })
 
       reqLines = [newReqLine()]
       renderReqLines()
