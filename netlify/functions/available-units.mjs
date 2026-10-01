@@ -1,4 +1,5 @@
 import { neon } from "@netlify/neon"
+import { ensureUnitAvailability } from "./_unit-availability.mjs"
 
 function isIsoDate(s) {
   return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s)
@@ -31,11 +32,13 @@ export const handler = async (event, context) => {
     }
 
     const sql = neon(process.env.DATABASE_URL)
+    await ensureUnitAvailability(sql)
 
     const units = await sql`
       select u.id as unit_id, u.unit_code
       from units u
-      where not exists (
+      where u.is_available = true
+      and not exists (
         select 1
         from bookings b
         where b.unit_id = u.id
@@ -63,3 +66,4 @@ export const handler = async (event, context) => {
     return { statusCode: 500, headers: { "Cache-Control": "no-store" }, body: String(err?.message || err) }
   }
 }
+

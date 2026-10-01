@@ -1,5 +1,6 @@
 import { neon } from "@netlify/neon"
 import { userIsAdmin } from "./_roles.mjs"
+import { ensureUnitAvailability, unitAvailabilityError } from "./_unit-availability.mjs"
 
 function isAdmin(context) {
   const user = context?.clientContext?.user || null
@@ -52,6 +53,7 @@ export const handler = async (event, context) => {
     }
 
     const sql = neon(process.env.DATABASE_URL)
+    await ensureUnitAvailability(sql)
 
     const existing = await sql`
       select id, unit_id
@@ -97,6 +99,8 @@ export const handler = async (event, context) => {
       body: JSON.stringify({ ok: true, id: bookingId })
     }
   } catch (err) {
+    const unavailable = unitAvailabilityError(err)
+    if (unavailable) return unavailable
     return { statusCode: 500, headers: { "Cache-Control": "no-store" }, body: String(err?.message || err) }
   }
 }

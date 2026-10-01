@@ -14,10 +14,8 @@ export function getRolesFromUser(user) {
 
   const fromAppMetadata = toRoleArray(user?.app_metadata?.roles)
   const fromAuthorization = toRoleArray(user?.app_metadata?.authorization?.roles)
-  const fromUserMetadata = toRoleArray(user?.user_metadata?.roles)
-  const fromTopLevel = toRoleArray(user?.roles)
-
-  return [...fromAppMetadata, ...fromAuthorization, ...fromUserMetadata, ...fromTopLevel]
+  // User metadata can be edited by the user; only assigned app roles grant access.
+  return [...fromAppMetadata, ...fromAuthorization]
     .map((role) => String(role).toLowerCase())
     .filter(Boolean)
 }
