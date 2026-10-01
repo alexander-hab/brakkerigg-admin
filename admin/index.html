@@ -191,7 +191,7 @@
 
       .grid{
         display:grid;
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
         gap: 14px;
       }
 
@@ -228,6 +228,8 @@
         font-size: 12px;
         margin: 0;
       }
+
+      #availabilityCard > .muted{ margin: 12px 0; }
 
       .contractNotice{
         margin-top: 8px;
@@ -834,6 +836,30 @@
           </div>
         </div>
 
+        <div class="card adminOnlyBlock" id="availabilityCard">
+          <div class="cardHead">
+            <h2>Tilgjengelighet for rom</h2>
+            <div class="hint">Kun admin</div>
+          </div>
+          <p class="muted">Sperr rom som ikke er klare for utleie. De vises som utleid i kartet og kan ikke bookes før du gjør dem tilgjengelige igjen.</p>
+          <form id="availabilityForm">
+            <div class="formGrid">
+              <div>
+                <label for="availabilityUnit">Rom</label>
+                <select id="availabilityUnit" required></select>
+              </div>
+              <div>
+                <label>Status for utleie</label>
+                <div class="priceOutput" id="availabilityStatus">Velg et rom</div>
+              </div>
+            </div>
+            <div class="formActions">
+              <button class="btn btnDanger" id="availabilityBtn" type="submit" disabled>Gjør utilgjengelig</button>
+            </div>
+          </form>
+          <p class="muted" id="blockedUnitsSummary"></p>
+          <p id="availabilityMessage" role="status" aria-live="polite"></p>
+        </div>
       </div>
     </div>
 
@@ -931,10 +957,17 @@
       const elEditTenantPhone = document.getElementById("editTenantPhone")
       const elBookingEditError = document.getElementById("bookingEditError")
       const elBookingEditCancelBtn = document.getElementById("bookingEditCancelBtn")
+      const elAvailabilityCard = document.getElementById("availabilityCard")
+      const elAvailabilityUnit = document.getElementById("availabilityUnit")
+      const elAvailabilityStatus = document.getElementById("availabilityStatus")
+      const elAvailabilityBtn = document.getElementById("availabilityBtn")
+      const elAvailabilityMessage = document.getElementById("availabilityMessage")
+      const elBlockedUnitsSummary = document.getElementById("blockedUnitsSummary")
 
       let isAdmin = false
       let unitRows = []
       let bookingEditContext = null
+      let availabilityBusy = false
 
       function toRoleArray(value) {
         if (Array.isArray(value)) return value
@@ -948,9 +981,7 @@
         if (!user || typeof user !== "object") return false
         const roles = [
           ...toRoleArray(user?.app_metadata?.roles),
-          ...toRoleArray(user?.app_metadata?.authorization?.roles),
-          ...toRoleArray(user?.user_metadata?.roles),
-          ...toRoleArray(user?.roles)
+          ...toRoleArray(user?.app_metadata?.authorization?.roles)
         ].map((role) => String(role).toLowerCase())
         return roles.includes("admin")
       }
@@ -1104,6 +1135,7 @@
       }
 
       function unitIsFree(row, checkin, checkout) {
+        if (row.is_available === false) return false
         if (!checkin || !checkout) return true
         const bookings = unitBookings(row)
         for (const b of bookings) {
@@ -1117,6 +1149,7 @@
       }
 
       function unitColorClass(row) {
+        if (row.is_available === false) return "unitRed"
         const today = isoToday()
         if (row.current_booking_id) return "unitRed"
 
@@ -1142,6 +1175,8 @@
         if (cls === "unitRed") { pill.className += " pillRed"; text = "Utleid" }
         else if (cls === "unitYellow") { pill.className += " pillYellow"; text = "Ledig, booket" }
         else { pill.className += " pillGreen"; text = "Ledig" }
+
+        if (isAdmin && row.is_available === false) text = "Utilgjengelig"
 
         pill.appendChild(document.createTextNode(text))
         return pill
@@ -1205,7 +1240,8 @@
           throw new Error(t || "Ingen tilgang")
         }
         if (res.status === 409) {
-          throw new Error("Konflikt. Enheten er allerede booket i perioden")
+          const t = await res.text()
+          throw new Error(t || "Enheten kan ikke bookes i perioden")
         }
         if (!res.ok) {
           const t = await res.text()
@@ -1945,6 +1981,7 @@
         elBookingCard.style.display = isAdmin ? "block" : "none"
         elWashCard.style.display = isAdmin ? "block" : "none"
         elAdminRequestsCard.style.display = isAdmin ? "block" : "none"
+        elAvailabilityCard.style.display = isAdmin ? "block" : "none"
         elRequestCard.style.display = isAdmin ? "none" : "block"
         document.querySelectorAll(".adminOnly").forEach((el) => {
           el.style.display = isAdmin ? "" : "none"
@@ -1952,6 +1989,67 @@
         document.querySelectorAll(".adminOnlyBlock").forEach((el) => {
           el.style.display = isAdmin ? "block" : "none"
         })
+      }
+
+      function updateAvailabilityControl() {
+        const row = unitRows.find(r => Number(r.unit_id) === Number(elAvailabilityUnit.value))
+        const blocked = row?.is_available === false
+        elAvailabilityUnit.disabled = availabilityBusy || !unitRows.length
+        elAvailabilityBtn.disabled = availabilityBusy || !row || !isAdmin
+        elAvailabilityBtn.textContent = availabilityBusy ? "Lagrer…" : (blocked ? "Gjør tilgjengelig" : "Gjør utilgjengelig")
+        elAvailabilityBtn.className = "btn " + (blocked ? "btnPrimary" : "btnDanger")
+        elAvailabilityStatus.textContent = row ? (blocked ? "Utilgjengelig" : "Tilgjengelig for booking") : "Ingen rom å vise"
+      }
+
+      function renderAvailabilityControl() {
+        const selected = elAvailabilityUnit.value
+        elAvailabilityUnit.innerHTML = ""
+        if (!isAdmin) return
+        for (const row of unitRows) {
+          const opt = document.createElement("option")
+          opt.value = String(row.unit_id)
+          opt.textContent = "Rom " + row.unit_code + (row.is_available === false ? " · Utilgjengelig" : "")
+          elAvailabilityUnit.appendChild(opt)
+        }
+        if (unitRows.some(r => String(r.unit_id) === selected)) elAvailabilityUnit.value = selected
+        const blocked = unitRows.filter(r => r.is_available === false).map(r => r.unit_code)
+        elBlockedUnitsSummary.textContent = blocked.length ? "Utilgjengelige rom: " + blocked.join(", ") : "Ingen rom er sperret for utleie."
+        updateAvailabilityControl()
+      }
+
+      async function setUnitAvailability(e) {
+        e.preventDefault()
+        if (!isAdmin || availabilityBusy) return
+        const row = unitRows.find(r => Number(r.unit_id) === Number(elAvailabilityUnit.value))
+        if (!row) return
+        const makeAvailable = row.is_available === false
+        availabilityBusy = true
+        elAvailabilityMessage.textContent = ""
+        updateAvailabilityControl()
+        try {
+          await identityReady
+          const headers = await authHeaders({ "Content-Type": "application/json" })
+          const res = await fetch("/.netlify/functions/set-unit-availability", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ unit_id: Number(row.unit_id), is_available: makeAvailable })
+          })
+          if (res.status === 401) {
+            window.location.href = "/login/"
+            return
+          }
+          const payload = await res.json()
+          if (!res.ok) throw new Error(payload.error || "Klarte ikke å endre tilgjengeligheten")
+          row.is_available = payload.unit.is_available
+          renderAvailabilityControl()
+          await loadUnits()
+          elAvailabilityMessage.textContent = "Rom " + row.unit_code + (makeAvailable ? " er tilgjengelig for booking igjen." : " er gjort utilgjengelig for booking.")
+        } catch (err) {
+          elAvailabilityMessage.textContent = err.message || "Klarte ikke å lagre. Prøv igjen."
+        } finally {
+          availabilityBusy = false
+          updateAvailabilityControl()
+        }
       }
 
       function fillAdminUnitSelect(checkin, checkout) {
@@ -2017,6 +2115,11 @@
 
           renderWash(unitRows)
           fillAdminUnitSelect(elCheckin.value, elCheckout.value)
+          renderAvailabilityControl()
+          for (const line of reqLines) {
+            if (line.unit_id && !isUnitIdAvailableForLine(line.unit_id, line.checkin_date, line.checkout_date)) line.unit_id = ""
+          }
+          renderReqLines()
 
           if (isAdmin) await loadBookingRequests()
         } catch {
@@ -2082,7 +2185,8 @@
           }
 
           if (res.status === 409) {
-            setMsg("Konflikt. Enheten er allerede booket i perioden")
+            const t = await res.text()
+            setMsg(t || "Enheten kan ikke bookes i perioden")
             return
           }
 
@@ -2630,6 +2734,11 @@
       document.getElementById("refreshBtn").addEventListener("click", loadUnits)
       document.getElementById("logoutBtn").addEventListener("click", logout)
       document.getElementById("form").addEventListener("submit", createBooking)
+      document.getElementById("availabilityForm").addEventListener("submit", setUnitAvailability)
+      elAvailabilityUnit.addEventListener("change", () => {
+        elAvailabilityMessage.textContent = ""
+        updateAvailabilityControl()
+      })
 
       document.getElementById("addReqLineBtn").addEventListener("click", () => {
         reqLines.push(newReqLine())
@@ -2668,3 +2777,4 @@
     </script>
   </body>
 </html>
+

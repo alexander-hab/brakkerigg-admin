@@ -1,6 +1,7 @@
 import { neon } from "@netlify/neon"
 import { userIsAdmin } from "./_roles.mjs"
 import { sendEmailjsEmail } from "./_emailjs.mjs"
+import { ensureUnitAvailability, checkUnitAvailability, unitAvailabilityError } from "./_unit-availability.mjs"
 
 function isIsoDate(s) {
   return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s)
@@ -53,6 +54,7 @@ export const handler = async (event, context) => {
     }
 
     const sql = neon(process.env.DATABASE_URL)
+    await ensureUnitAvailability(sql)
 
     const found = await sql`
       select
@@ -129,6 +131,9 @@ export const handler = async (event, context) => {
     const unitId = Number(ln.unit_id)
     const checkin = String(ln.checkin_date || "")
     const checkout = String(ln.checkout_date || "")
+
+    const unavailable = await checkUnitAvailability(sql, unitId)
+    if (unavailable) return unavailable
 
     if (!isIsoDate(checkin) || !isIsoDate(checkout)) {
       return { statusCode: 500, body: "Ugyldige datoer på forespørselen" }
@@ -216,6 +221,9 @@ export const handler = async (event, context) => {
       body: JSON.stringify({ ok: true, booking_id: bookingId })
     }
   } catch (err) {
+    const unavailable = unitAvailabilityError(err)
+    if (unavailable) return unavailable
     return { statusCode: 500, headers: { "Cache-Control": "no-store" }, body: String(err?.message || err) }
   }
 }
+

@@ -1,5 +1,6 @@
 import { neon } from "@netlify/neon"
 import { sendEmailjsEmail } from "./_emailjs.mjs"
+import { ensureUnitAvailability, checkUnitAvailability, unitAvailabilityError } from "./_unit-availability.mjs"
 
 function isIsoDate(s) {
   return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s)
@@ -74,11 +75,15 @@ export const handler = async (event, context) => {
     }
 
     const sql = neon(process.env.DATABASE_URL)
+    await ensureUnitAvailability(sql)
 
     for (const ln of lines) {
       const unitId = Number(ln.unit_id)
       const checkin = ln.checkin_date
       const checkout = ln.checkout_date
+
+      const unavailable = await checkUnitAvailability(sql, unitId)
+      if (unavailable) return unavailable
 
       const conflict = await sql`
         select 1
@@ -103,29 +108,34 @@ export const handler = async (event, context) => {
       if (pending.length > 0) return { statusCode: 409, body: "Konflikt med forespurt booking" }
     }
 
+    const normalizedLines = lines.map((ln) => ({
+      unit_id: Number(ln.unit_id),
+      checkin_date: ln.checkin_date,
+      checkout_date: ln.checkout_date,
+      tenant_name: String(ln.tenant_name || "").trim() || null,
+      company: String(ln.company || "").trim() || null,
+      comment: String(ln.comment || "").trim() || null
+    }))
+
+    // One statement rolls back the entire request if a room was blocked meanwhile.
     const req = await sql`
-      insert into booking_requests (requested_by_user_id, requested_by_email, requester_email, requester_phone)
-      values (${String(user.id || "")}, ${String(user.email || "")}, ${requesterEmail}, ${requesterPhone})
-      returning id;
+      with request as (
+        insert into booking_requests (requested_by_user_id, requested_by_email, requester_email, requester_phone)
+        values (${String(user.id || "")}, ${String(user.email || "")}, ${requesterEmail}, ${requesterPhone})
+        returning id
+      ), inserted_lines as (
+        insert into booking_request_lines
+          (request_id, unit_id, tenant_name, company, comment, checkin_date, checkout_date, status)
+        select request.id, (line->>'unit_id')::integer, line->>'tenant_name',
+          line->>'company', line->>'comment', (line->>'checkin_date')::date,
+          (line->>'checkout_date')::date, 'pending'
+        from request cross join jsonb_array_elements(${JSON.stringify(normalizedLines)}::jsonb) as line
+        returning request_id
+      )
+      select request_id as id from inserted_lines limit 1;
     `
     const requestId = req[0]?.id
     if (!requestId) return { statusCode: 500, body: "Klarte ikke å opprette forespørsel" }
-
-    for (const ln of lines) {
-      const unitId = Number(ln.unit_id)
-      const checkin = ln.checkin_date
-      const checkout = ln.checkout_date
-      const tenantName = String(ln.tenant_name || "").trim() || null
-      const company = String(ln.company || "").trim() || null
-      const comment = String(ln.comment || "").trim() || null
-
-      await sql`
-        insert into booking_request_lines
-          (request_id, unit_id, tenant_name, company, comment, checkin_date, checkout_date, status)
-        values
-          (${requestId}, ${unitId}, ${tenantName}, ${company}, ${comment}, ${checkin}::date, ${checkout}::date, 'pending');
-      `
-    }
 
     const recipientEmail = requesterEmail || String(user.email || "").trim() || null
     if (recipientEmail) {
@@ -215,6 +225,9 @@ export const handler = async (event, context) => {
       body: JSON.stringify({ ok: true, request_id: requestId })
     }
   } catch (err) {
+    const unavailable = unitAvailabilityError(err)
+    if (unavailable) return unavailable
     return { statusCode: 500, headers: { "Cache-Control": "no-store" }, body: String(err?.message || err) }
   }
 }
+

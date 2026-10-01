@@ -1,5 +1,6 @@
 import { neon } from "@netlify/neon"
 import { userIsAdmin } from "./_roles.mjs"
+import { ensureUnitAvailability } from "./_unit-availability.mjs"
 
 function getViewer(context) {
   const user = context?.clientContext?.user || null
@@ -24,12 +25,14 @@ export const handler = async (event, context) => {
     }
 
     const sql = neon(process.env.DATABASE_URL)
+    await ensureUnitAvailability(sql)
 
     const rows = await sql`
       with today as (select current_date as d)
       select
         u.id as unit_id,
         u.unit_code,
+        u.is_available,
 
         cb.id as current_booking_id,
         cb.tenant_name as current_tenant_name,
@@ -101,3 +104,4 @@ export const handler = async (event, context) => {
     }
   }
 }
+
