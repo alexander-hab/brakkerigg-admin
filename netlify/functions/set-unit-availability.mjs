@@ -23,13 +23,27 @@ export const handler = async (event, context) => {
     if (!Number.isSafeInteger(unitId) || unitId <= 0 || typeof body?.is_available !== "boolean") {
       return response(400, { error: "Velg en enhet og gyldig tilgjengelighet" })
     }
+    const hasReason = Object.hasOwn(body, "unavailability_reason")
+    if (hasReason && typeof body.unavailability_reason !== "string") {
+      return response(400, { error: "Kommentaren må være tekst" })
+    }
+    const reason = hasReason ? body.unavailability_reason.trim() : ""
+    if (reason.length > 1000 || reason.includes("\u0000")) {
+      return response(400, { error: "Kommentaren kan ha maksimalt 1000 tegn og kan ikke inneholde nulltegn" })
+    }
 
     const sql = neon(process.env.DATABASE_URL)
     await ensureUnitAvailability(sql)
     const rows = await sql`
-      update units set is_available = ${body.is_available}
+      update units
+      set is_available = ${body.is_available},
+          unavailability_reason = case
+            when ${body.is_available} then ''
+            when ${hasReason} then ${reason}
+            else unavailability_reason
+          end
       where id = ${unitId}
-      returning id as unit_id, unit_code, is_available;
+      returning id as unit_id, unit_code, is_available, unavailability_reason;
     `
     if (!rows.length) return response(404, { error: "Fant ikke enheten" })
     return response(200, { ok: true, unit: rows[0] })

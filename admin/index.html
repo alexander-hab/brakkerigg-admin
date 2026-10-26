@@ -230,6 +230,28 @@
       }
 
       #availabilityCard > .muted{ margin: 12px 0; }
+      .availabilityReasonField{ margin-top: 14px; }
+      .availabilityReasonField textarea{ min-height: 88px; resize: vertical; }
+      .blockedRoomsSection{ margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+      .blockedRoomsTitle{ margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+      .blockedRoomsList{ list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+      .blockedRoom{
+        display: grid;
+        grid-template-columns: 88px minmax(0, 1fr) auto;
+        gap: 14px;
+        align-items: start;
+        padding: 14px;
+        border: 1px solid #dbeafe;
+        border-radius: 10px;
+        background: #f8fbff;
+      }
+      .blockedRoomCode{ color: #1e40af; font-size: 14px; font-weight: 800; padding-top: 7px; }
+      .blockedRoomReason{ margin: 0; padding-top: 7px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+      .blockedRoomActions{ display: flex; gap: 8px; flex-wrap: wrap; }
+      @media (max-width: 640px){
+        .blockedRoom{ grid-template-columns: minmax(0, 1fr); gap: 8px; }
+        .blockedRoomCode, .blockedRoomReason{ padding-top: 0; }
+      }
 
       .contractNotice{
         margin-top: 8px;
@@ -271,6 +293,7 @@
 
       .unitGreen{ background: var(--green); }
       .unitRed{ background: var(--red); }
+      .unitBlue{ background: var(--blue); border-color: var(--blueBorder); }
       .unitYellow{ background: var(--yellow); }
 
       .washBox{
@@ -390,6 +413,7 @@
       .legendGreen{ background: var(--green); }
       .legendYellow{ background: var(--yellow); }
       .legendRed{ background: var(--red); }
+      .legendBlue{ background: var(--blue); }
 
       label{
         display:block;
@@ -606,6 +630,7 @@
             <li><span class="legendSwatch legendGreen"></span> Ledig</li>
             <li><span class="legendSwatch legendYellow"></span> Ledig, booket</li>
             <li><span class="legendSwatch legendRed"></span> Utleid</li>
+            <li id="unavailableMapLegend" style="display:none"><span class="legendSwatch legendBlue"></span> Utilgjengelig</li>
           </ul>
           <div class="mapWrap" id="mapWrap">
             <img class="mapImg" src="/admin/kart.png" alt="Kart over enheter" />
@@ -841,7 +866,7 @@
             <h2>Tilgjengelighet for rom</h2>
             <div class="hint">Kun admin</div>
           </div>
-          <p class="muted">Sperr rom som ikke er klare for utleie. De vises som utleid i kartet og kan ikke bookes før du gjør dem tilgjengelige igjen.</p>
+          <p class="muted">Sperr rom som ikke er klare for utleie, og legg gjerne inn årsaken. Du ser rommene i blått på kartet. Andre brukere ser dem som utleid og kan ikke booke dem.</p>
           <form id="availabilityForm">
             <div class="formGrid">
               <div>
@@ -853,11 +878,19 @@
                 <div class="priceOutput" id="availabilityStatus">Velg et rom</div>
               </div>
             </div>
+            <div class="availabilityReasonField">
+              <label for="availabilityReason">Årsak / kommentar (kun synlig for admin)</label>
+              <textarea id="availabilityReason" rows="3" maxlength="1000" placeholder="For eksempel: Mangler nøkkel. Venter på ny lås."></textarea>
+            </div>
             <div class="formActions">
               <button class="btn btnDanger" id="availabilityBtn" type="submit" disabled>Gjør utilgjengelig</button>
+              <button class="btn btnGhost" id="saveAvailabilityReasonBtn" type="button" style="display:none">Lagre kommentar</button>
             </div>
           </form>
-          <p class="muted" id="blockedUnitsSummary"></p>
+          <div class="blockedRoomsSection">
+            <h3 class="blockedRoomsTitle" id="blockedUnitsSummary">Ingen rom er sperret for utleie.</h3>
+            <ul class="blockedRoomsList" id="blockedRoomsList" aria-labelledby="blockedUnitsSummary"></ul>
+          </div>
           <p id="availabilityMessage" role="status" aria-live="polite"></p>
         </div>
       </div>
@@ -963,6 +996,10 @@
       const elAvailabilityBtn = document.getElementById("availabilityBtn")
       const elAvailabilityMessage = document.getElementById("availabilityMessage")
       const elBlockedUnitsSummary = document.getElementById("blockedUnitsSummary")
+      const elBlockedRoomsList = document.getElementById("blockedRoomsList")
+      const elAvailabilityReason = document.getElementById("availabilityReason")
+      const elSaveAvailabilityReasonBtn = document.getElementById("saveAvailabilityReasonBtn")
+      const elUnavailableMapLegend = document.getElementById("unavailableMapLegend")
 
       let isAdmin = false
       let unitRows = []
@@ -1161,6 +1198,11 @@
           return "unitRed"
         }
         return "unitGreen"
+      }
+
+      function unitMapColorClass(row) {
+        if (isAdmin && row.is_available === false) return "unitBlue"
+        return unitColorClass(row)
       }
 
       function statusPill(row) {
@@ -1568,7 +1610,7 @@
           const rect = clampRect(raw)
 
           const box = document.createElement("div")
-          box.className = "unitBox " + unitColorClass(r)
+          box.className = "unitBox " + unitMapColorClass(r)
 
           box.style.left = rect.left.toFixed(4) + "%"
           box.style.top = rect.top.toFixed(4) + "%"
@@ -1576,11 +1618,15 @@
           box.style.height = rect.height.toFixed(4) + "%"
 
           box.title = "Enhet " + code
+          if (isAdmin && r.is_available === false) {
+            box.title += "\nUtilgjengelig" + (r.unavailability_reason ? "\n" + r.unavailability_reason : "")
+          }
 
           box.addEventListener("click", () => {
             const lines = []
             lines.push("Enhet " + code)
             lines.push(statusPill(r).textContent || "")
+            if (isAdmin && r.is_available === false && r.unavailability_reason) lines.push("Årsak: " + r.unavailability_reason)
             if (isAdmin && r.current_booking_id) lines.push("Booking: " + r.current_booking_id)
             if (r.current_company) lines.push("Firma: " + r.current_company)
             if (isAdmin && r.current_tenant_name) lines.push("Leietaker: " + r.current_tenant_name)
@@ -1982,6 +2028,7 @@
         elWashCard.style.display = isAdmin ? "block" : "none"
         elAdminRequestsCard.style.display = isAdmin ? "block" : "none"
         elAvailabilityCard.style.display = isAdmin ? "block" : "none"
+        elUnavailableMapLegend.style.display = isAdmin ? "flex" : "none"
         elRequestCard.style.display = isAdmin ? "none" : "block"
         document.querySelectorAll(".adminOnly").forEach((el) => {
           el.style.display = isAdmin ? "" : "none"
@@ -1999,12 +2046,26 @@
         elAvailabilityBtn.textContent = availabilityBusy ? "Lagrer…" : (blocked ? "Gjør tilgjengelig" : "Gjør utilgjengelig")
         elAvailabilityBtn.className = "btn " + (blocked ? "btnPrimary" : "btnDanger")
         elAvailabilityStatus.textContent = row ? (blocked ? "Utilgjengelig" : "Tilgjengelig for booking") : "Ingen rom å vise"
+        elAvailabilityReason.disabled = availabilityBusy || !row || !isAdmin
+        elSaveAvailabilityReasonBtn.style.display = blocked && isAdmin ? "" : "none"
+        elSaveAvailabilityReasonBtn.disabled = availabilityBusy || !row || !isAdmin
+        elBlockedRoomsList.querySelectorAll("button").forEach(btn => { btn.disabled = availabilityBusy })
+      }
+
+      function fillAvailabilityReason() {
+        const row = unitRows.find(r => Number(r.unit_id) === Number(elAvailabilityUnit.value))
+        elAvailabilityReason.value = isAdmin ? (row?.unavailability_reason || "") : ""
       }
 
       function renderAvailabilityControl() {
         const selected = elAvailabilityUnit.value
         elAvailabilityUnit.innerHTML = ""
-        if (!isAdmin) return
+        elBlockedRoomsList.replaceChildren()
+        if (!isAdmin) {
+          elAvailabilityReason.value = ""
+          elBlockedUnitsSummary.textContent = ""
+          return
+        }
         for (const row of unitRows) {
           const opt = document.createElement("option")
           opt.value = String(row.unit_id)
@@ -2012,17 +2073,52 @@
           elAvailabilityUnit.appendChild(opt)
         }
         if (unitRows.some(r => String(r.unit_id) === selected)) elAvailabilityUnit.value = selected
-        const blocked = unitRows.filter(r => r.is_available === false).map(r => r.unit_code)
-        elBlockedUnitsSummary.textContent = blocked.length ? "Utilgjengelige rom: " + blocked.join(", ") : "Ingen rom er sperret for utleie."
+        const blocked = unitRows.filter(r => r.is_available === false)
+          .sort((a, b) => String(a.unit_code).localeCompare(String(b.unit_code), "nb", { numeric: true }))
+        elBlockedUnitsSummary.textContent = blocked.length ? "Utilgjengelige rom (" + blocked.length + ")" : "Ingen rom er sperret for utleie."
+        for (const row of blocked) {
+          const item = document.createElement("li")
+          item.className = "blockedRoom"
+          const code = document.createElement("div")
+          code.className = "blockedRoomCode"
+          code.textContent = "Rom " + row.unit_code
+          const reason = document.createElement("p")
+          reason.className = "blockedRoomReason"
+          reason.textContent = row.unavailability_reason || "Ingen årsak oppgitt"
+          const actions = document.createElement("div")
+          actions.className = "blockedRoomActions"
+          const edit = document.createElement("button")
+          edit.type = "button"
+          edit.className = "btn btnSmall btnGhost"
+          edit.textContent = "Rediger kommentar"
+          edit.addEventListener("click", () => {
+            elAvailabilityUnit.value = String(row.unit_id)
+            fillAvailabilityReason()
+            updateAvailabilityControl()
+            elAvailabilityMessage.textContent = ""
+            elAvailabilityReason.focus()
+          })
+          const reopen = document.createElement("button")
+          reopen.type = "button"
+          reopen.className = "btn btnSmall btnGhost"
+          reopen.textContent = "Gjør tilgjengelig"
+          reopen.addEventListener("click", e => setUnitAvailability(e, { unitId: row.unit_id, available: true }))
+          actions.append(edit, reopen)
+          item.append(code, reason, actions)
+          elBlockedRoomsList.appendChild(item)
+        }
+        fillAvailabilityReason()
         updateAvailabilityControl()
       }
 
-      async function setUnitAvailability(e) {
+      async function setUnitAvailability(e, options = {}) {
         e.preventDefault()
         if (!isAdmin || availabilityBusy) return
-        const row = unitRows.find(r => Number(r.unit_id) === Number(elAvailabilityUnit.value))
+        const row = unitRows.find(r => Number(r.unit_id) === Number(options.unitId || elAvailabilityUnit.value))
         if (!row) return
-        const makeAvailable = row.is_available === false
+        const makeAvailable = options.available ?? (row.is_available === false)
+        const wasBlocked = row.is_available === false
+        const reason = makeAvailable ? "" : elAvailabilityReason.value.trim()
         availabilityBusy = true
         elAvailabilityMessage.textContent = ""
         updateAvailabilityControl()
@@ -2032,7 +2128,7 @@
           const res = await fetch("/.netlify/functions/set-unit-availability", {
             method: "POST",
             headers,
-            body: JSON.stringify({ unit_id: Number(row.unit_id), is_available: makeAvailable })
+            body: JSON.stringify({ unit_id: Number(row.unit_id), is_available: makeAvailable, unavailability_reason: reason })
           })
           if (res.status === 401) {
             window.location.href = "/login/"
@@ -2041,9 +2137,12 @@
           const payload = await res.json()
           if (!res.ok) throw new Error(payload.error || "Klarte ikke å endre tilgjengeligheten")
           row.is_available = payload.unit.is_available
+          row.unavailability_reason = payload.unit.unavailability_reason
           renderAvailabilityControl()
           await loadUnits()
-          elAvailabilityMessage.textContent = "Rom " + row.unit_code + (makeAvailable ? " er tilgjengelig for booking igjen." : " er gjort utilgjengelig for booking.")
+          elAvailabilityMessage.textContent = makeAvailable ? "Rom " + row.unit_code + " er tilgjengelig for booking igjen."
+            : wasBlocked ? "Kommentaren for rom " + row.unit_code + " er lagret."
+            : "Rom " + row.unit_code + " er gjort utilgjengelig for booking."
         } catch (err) {
           elAvailabilityMessage.textContent = err.message || "Klarte ikke å lagre. Prøv igjen."
         } finally {
@@ -2737,8 +2836,10 @@
       document.getElementById("availabilityForm").addEventListener("submit", setUnitAvailability)
       elAvailabilityUnit.addEventListener("change", () => {
         elAvailabilityMessage.textContent = ""
+        fillAvailabilityReason()
         updateAvailabilityControl()
       })
+      elSaveAvailabilityReasonBtn.addEventListener("click", e => setUnitAvailability(e, { available: false }))
 
       document.getElementById("addReqLineBtn").addEventListener("click", () => {
         reqLines.push(newReqLine())

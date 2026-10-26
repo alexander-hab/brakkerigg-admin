@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { before, beforeEach, after, test } from "node:test"
 import { createEnvironment, admin, viewer, dates, post } from "./helpers.mjs"
+import { ensureUnitAvailability as upgradeAvailability } from "../netlify/functions/_unit-availability.mjs"
 
 let env
 before(async () => {
@@ -12,7 +13,7 @@ beforeEach(async () => {
   env.emails.length = 0
   await env.db.exec(`
     truncate booking_request_lines, booking_requests, bookings restart identity;
-    update units set is_available = true;
+    update units set is_available = true, unavailability_reason = '';
   `)
 })
 after(async () => { await env?.db.close() })
@@ -49,6 +50,65 @@ test("availability API validates requests and missing rooms", async () => {
   }
   assert.equal((await env.call("set-unit-availability", { httpMethod: "POST", body: "{" }, admin)).statusCode, 400)
   assert.equal((await setAvailable(999, false)).statusCode, 404)
+})
+
+test("comments are stored for admins and never returned to other users", async () => {
+  const reason = "Mangler nøkkel.\nNy lås bestilt."
+  const result = await env.call("set-unit-availability", post({ unit_id: 1, is_available: false, unavailability_reason: "  " + reason + "  " }), admin)
+  assert.equal(result.statusCode, 200)
+  assert.equal(JSON.parse(result.body).unit.unavailability_reason, reason)
+  const adminRows = JSON.parse((await env.call("units", { httpMethod: "GET" }, admin)).body).rows
+  assert.equal(adminRows[0].unavailability_reason, reason)
+  const publicResponse = await env.call("units", { httpMethod: "GET" }, viewer)
+  assert.equal(publicResponse.body.includes(reason), false)
+  assert.ok(JSON.parse(publicResponse.body).rows.every(row => !Object.hasOwn(row, "unavailability_reason")))
+  const unauthorized = await env.call("set-unit-availability", post({ unit_id: 1, is_available: false, unavailability_reason: "Endret" }), viewer)
+  assert.equal(unauthorized.statusCode, 403)
+  assert.equal((await env.db.query("select unavailability_reason from units where id = 1")).rows[0].unavailability_reason, reason)
+})
+
+test("an admin can edit or clear a comment while keeping the room blocked", async () => {
+  for (const reason of ["Mangler nøkkel", "Nøkkel funnet. Venter på vask.", ""]) {
+    const result = await env.call("set-unit-availability", post({ unit_id: 1, is_available: false, unavailability_reason: reason }), admin)
+    assert.equal(result.statusCode, 200)
+    assert.equal(JSON.parse(result.body).unit.is_available, false)
+    assert.equal(JSON.parse(result.body).unit.unavailability_reason, reason)
+  }
+  assert.equal((await env.call("create-booking", post({ unit_id: 1, ...dates }), admin)).statusCode, 409)
+})
+
+test("reopening clears the old reason; older clients preserve comments when blocking", async () => {
+  await env.call("set-unit-availability", post({ unit_id: 1, is_available: false, unavailability_reason: "Mangler nøkkel" }), admin)
+  await setAvailable(1, false)
+  assert.equal((await env.db.query("select unavailability_reason from units where id = 1")).rows[0].unavailability_reason, "Mangler nøkkel")
+  await setAvailable(1, true)
+  await setAvailable(1, false)
+  assert.equal((await env.db.query("select unavailability_reason from units where id = 1")).rows[0].unavailability_reason, "")
+})
+
+test("invalid comments are rejected without changing room availability", async () => {
+  for (const reason of [null, 42, {}, [], "x".repeat(1001), "null\u0000tegn"]) {
+    const result = await env.call("set-unit-availability", post({ unit_id: 1, is_available: false, unavailability_reason: reason }), admin)
+    assert.equal(result.statusCode, 400)
+  }
+  const row = (await env.db.query("select is_available, unavailability_reason from units where id = 1")).rows[0]
+  assert.equal(row.is_available, true)
+  assert.equal(row.unavailability_reason, "")
+  assert.equal((await env.call("set-unit-availability", post({ unit_id: 1, is_available: false, unavailability_reason: "x".repeat(1000) }), admin)).statusCode, 200)
+})
+
+test("existing installations gain the comment column while preserving blocked rooms and triggers", async () => {
+  await setAvailable(1, false)
+  const triggersBefore = (await env.db.query("select oid, tgname from pg_trigger where tgname like '%require_available_unit' order by tgname")).rows
+  await env.db.exec("alter table units drop column unavailability_reason")
+  await upgradeAvailability(env.sql)
+  await upgradeAvailability(env.sql)
+  const row = (await env.db.query("select is_available, unavailability_reason from units where id = 1")).rows[0]
+  assert.equal(row.is_available, false)
+  assert.equal(row.unavailability_reason, "")
+  const triggersAfter = (await env.db.query("select oid, tgname from pg_trigger where tgname like '%require_available_unit' order by tgname")).rows
+  assert.deepEqual(triggersAfter, triggersBefore)
+  assert.equal((await env.call("create-booking", post({ unit_id: 1, ...dates }), admin)).statusCode, 409)
 })
 
 test("blocking persists in room list and availability search; reopening restores it", async () => {

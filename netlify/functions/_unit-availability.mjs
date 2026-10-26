@@ -14,6 +14,10 @@ export async function ensureUnitAvailability(sql) {
           select 1 from pg_trigger
           where tgrelid = 'booking_request_lines'::regclass
             and tgname = 'requests_require_available_unit' and not tgisinternal
+        ) and exists (
+          select 1 from pg_attribute
+          where attrelid = 'units'::regclass
+            and attname = 'unavailability_reason' and not attisdropped
         ) then
           return;
         end if;
@@ -21,6 +25,20 @@ export async function ensureUnitAvailability(sql) {
         -- Serialize first-time setup across independently deployed functions.
         perform pg_advisory_xact_lock(184297, 1);
         alter table units add column if not exists is_available boolean not null default true;
+        alter table units add column if not exists unavailability_reason text not null default '';
+
+        -- An existing installation only needs the new comment column.
+        if exists (
+          select 1 from pg_trigger
+          where tgrelid = 'bookings'::regclass
+            and tgname = 'bookings_require_available_unit' and not tgisinternal
+        ) and exists (
+          select 1 from pg_trigger
+          where tgrelid = 'booking_request_lines'::regclass
+            and tgname = 'requests_require_available_unit' and not tgisinternal
+        ) then
+          return;
+        end if;
 
         create or replace function require_available_unit() returns trigger
         language plpgsql as $function$
