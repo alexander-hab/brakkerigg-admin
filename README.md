@@ -6,10 +6,18 @@ Netlify-nettside med innlogging, booking og romoversikt.
 
 Som admin finner du **Tilgjengelighet for rom** nederst på adminsiden.
 Velg rommet og trykk **Gjør utilgjengelig** når det ikke er klart for utleie.
+Du kan legge inn en kommentar om årsaken (maksimalt 1000 tegn). Under skjemaet
+vises sperrede rom i romnummerrekkefølge, med årsaken ved siden av. Rom uten
+kommentar vises med **Ingen årsak oppgitt**. Bruk **Rediger kommentar** og
+**Lagre kommentar** for å oppdatere årsaken mens rommet fortsatt er sperret.
 Velg samme rom og trykk **Gjør tilgjengelig** når det er klart igjen.
+Rommet kan også åpnes direkte fra listen. Den gamle kommentaren fjernes når
+rommet åpnes igjen.
 
 Sperrede rom vises røde og som **Utleid** for vanlige brukere. De fjernes fra
-romvalget og kan ikke bookes eller forespørres. Admin ser **Utilgjengelig**.
+romvalget og kan ikke bookes eller forespørres. Admin ser **Utilgjengelig** og
+blå farge på kartet, med egen fargeforklaring. Kommentarene sendes bare til admin
+og vises også ved klikk på rommet i admin sitt kart.
 Sperren gjelder alle datoer frem til admin åpner rommet igjen. Faktiske bookinger
 beholdes; å åpne et rom opphever ikke en eksisterende booking.
 Tidligere forespørsler kan avslås mens rommet er sperret, og kan godkjennes etter
@@ -19,7 +27,8 @@ men ikke forlenges mens rommet er sperret.
 ## Database og publisering
 
 Etter utrulling initialiserer den første rom- eller bookingforespørselen
-`units.is_available` (standardverdi `true`) og databasetriggere som håndhever
+`units.is_available` (standardverdi `true`), `units.unavailability_reason`
+(standardverdi tom tekst) og databasetriggere som håndhever
 bookingsperren. Initialiseringen er automatisk og kan kjøres flere ganger.
 Databasetilkoblingen må kunne endre de eksisterende tabellene og opprette
 PL/pgSQL-funksjoner og triggere. Bruk den samme Netlify/Neon-tilkoblingen som før.

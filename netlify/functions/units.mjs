@@ -33,6 +33,7 @@ export const handler = async (event, context) => {
         u.id as unit_id,
         u.unit_code,
         u.is_available,
+        u.unavailability_reason,
 
         cb.id as current_booking_id,
         cb.tenant_name as current_tenant_name,
@@ -93,7 +94,7 @@ export const handler = async (event, context) => {
       headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
       body: JSON.stringify({
         viewer: { email: v.email, is_admin: v.isAdmin },
-        rows
+        rows: v.isAdmin ? rows : rows.map(({ unavailability_reason, ...row }) => row)
       })
     }
   } catch (err) {
